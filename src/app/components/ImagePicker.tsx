@@ -77,23 +77,19 @@ export default function ImagePicker({
   const handleImageClick = useCallback((e: React.MouseEvent) => {
     if (!picking) return;
     const img = imgRef.current;
-    if (!img) return;
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const localX = e.clientX - rect.left;
-    const localY = e.clientY - rect.top;
-    const imgX = (localX - pan.x) / zoom;
-    const imgY = (localY - pan.y) / zoom;
-    if (imgX < 0 || imgX > img.naturalWidth || imgY < 0 || imgY > img.naturalHeight) return;
-
     const cvs = canvasRef.current;
-    if (!cvs) return;
+    if (!img || !cvs) return;
+    const imgRect = img.getBoundingClientRect();
+    const imgX = (e.clientX - imgRect.left) / zoom;
+    const imgY = (e.clientY - imgRect.top) / zoom;
+    if (imgX < 0 || imgX > cvs.width || imgY < 0 || imgY > cvs.height) return;
+
     const data = cvs.getContext("2d")!.getImageData(Math.round(imgX), Math.round(imgY), 1, 1).data;
     if (data[3] < 128) return;
     const hex = rgbToHex(data[0], data[1], data[2]);
     setPickedHex(hex);
     onPick(targetKey, hex);
-  }, [picking, zoom, pan, targetKey, onPick]);
+  }, [picking, zoom, targetKey, onPick]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
