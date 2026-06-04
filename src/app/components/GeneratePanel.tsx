@@ -199,21 +199,40 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
                 setExtracting(false);
               }}
             />
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={extracting}
-              className="w-full h-24 flex flex-col items-center justify-center gap-1 border-2 border-dashed cursor-pointer disabled:opacity-50"
-              style={{ borderColor: scheme.base03, color: scheme.base04 }}
-            >
-              {extracting ? (
-                <span className="text-[14px]">Extracting palette...</span>
-              ) : (
-                <>
-                  <span className="text-[20px]">+</span>
-                  <span className="text-[13px]">Click to select an image</span>
-                </>
-              )}
-            </button>
+            {generated?.sourceImage ? (
+              <div className="relative">
+                <img
+                  src={generated.sourceImage}
+                  alt="Source"
+                  className="w-full h-32 object-cover rounded cursor-pointer"
+                  style={{ border: `1px solid ${scheme.base02}` }}
+                  onClick={() => fileRef.current?.click()}
+                />
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity text-[13px] font-semibold"
+                  style={{ background: `${scheme.base00}cc`, color: scheme.base05 }}
+                >
+                  Change image
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={extracting}
+                className="w-full h-24 flex flex-col items-center justify-center gap-1 border-2 border-dashed cursor-pointer disabled:opacity-50"
+                style={{ borderColor: scheme.base03, color: scheme.base04 }}
+              >
+                {extracting ? (
+                  <span className="text-[14px]">Extracting palette...</span>
+                ) : (
+                  <>
+                    <span className="text-[20px]">+</span>
+                    <span className="text-[13px]">Click to select an image</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
 

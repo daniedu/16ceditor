@@ -138,6 +138,22 @@ export default function Home() {
           <div ref={mainRef} className="flex-1 overflow-y-auto p-4">
             {activeTab === "previews" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {activeScheme.sourceImage && (
+                  <div
+                    className="flex flex-col border overflow-hidden"
+                    style={{ borderColor: base02, background: base01 }}
+                  >
+                    <div className="text-[12px] font-semibold px-3 py-1.5" style={{ color: base04 }}>
+                      SOURCE IMAGE
+                    </div>
+                    <img
+                      src={activeScheme.sourceImage}
+                      alt="Source"
+                      className="w-full object-contain"
+                      style={{ maxHeight: 320, background: base00 }}
+                    />
+                  </div>
+                )}
                 <TerminalPreview scheme={activeScheme} />
                 <GtkPreview scheme={activeScheme} />
                 <QtPreview scheme={activeScheme} />
@@ -168,6 +184,19 @@ export default function Home() {
             className="hidden xl:flex w-80 shrink-0 flex-col border-l overflow-y-auto p-3 space-y-4"
             style={{ background: base01, borderColor: base02 }}
           >
+            {activeScheme.sourceImage && (
+              <div className="flex flex-col border overflow-hidden" style={{ borderColor: base02 }}>
+                <div className="text-[11px] font-semibold px-2 py-1" style={{ color: base04 }}>
+                  SOURCE IMAGE
+                </div>
+                <img
+                  src={activeScheme.sourceImage}
+                  alt="Source"
+                  className="w-full object-contain"
+                  style={{ maxHeight: 160, background: base00 }}
+                />
+              </div>
+            )}
             <ColorEditor scheme={activeScheme} onChange={handleChange} />
             <ContrastPanel scheme={activeScheme} />
           </div>

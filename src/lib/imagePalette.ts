@@ -50,6 +50,18 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
+function generateThumbnail(img: HTMLImageElement, maxSize: number): string {
+  const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", 0.8);
+}
+
 function samplePixels(
   img: HTMLImageElement,
   maxSamples: number,
@@ -222,62 +234,52 @@ function extractKMeans(pixels: number[][], _k: number): number[][] {
 
 // -- Median Cut --
 
-interface ColorBox {
-  pixels: number[][];
-}
-
 function medianCutExtract(pixels: number[][], k: number): number[][] {
-  let boxes: ColorBox[] = [{ pixels }];
+  const n = pixels.length;
+  const indices = new Uint32Array(n);
+  for (let i = 0; i < n; i++) indices[i] = i;
+
+  interface Range { start: number; end: number }
+  const boxes: Range[] = [{ start: 0, end: n }];
 
   while (boxes.length < k) {
-    const boxToSplit = boxes.shift();
-    if (!boxToSplit || boxToSplit.pixels.length < 2) break;
+    const box = boxes.shift()!;
+    const len = box.end - box.start;
+    if (len < 2) { boxes.push(box); break; }
 
-    const p = boxToSplit.pixels;
-    let minR = Infinity, maxR = -Infinity;
-    let minG = Infinity, maxG = -Infinity;
-    let minB = Infinity, maxB = -Infinity;
-
-    for (const px of p) {
-      if (px[0] < minR) minR = px[0];
-      if (px[0] > maxR) maxR = px[0];
-      if (px[1] < minG) minG = px[1];
-      if (px[1] > maxG) maxG = px[1];
-      if (px[2] < minB) minB = px[2];
-      if (px[2] > maxB) maxB = px[2];
+    const dims = [Infinity, Infinity, Infinity];
+    const maxs = [-Infinity, -Infinity, -Infinity];
+    for (let i = box.start; i < box.end; i++) {
+      const px = pixels[indices[i]];
+      if (px[0] < dims[0]) dims[0] = px[0];
+      if (px[0] > maxs[0]) maxs[0] = px[0];
+      if (px[1] < dims[1]) dims[1] = px[1];
+      if (px[1] > maxs[1]) maxs[1] = px[1];
+      if (px[2] < dims[2]) dims[2] = px[2];
+      if (px[2] > maxs[2]) maxs[2] = px[2];
     }
 
-    const rangeR = maxR - minR;
-    const rangeG = maxG - minG;
-    const rangeB = maxB - minB;
+    const ranges = [maxs[0]-dims[0], maxs[1]-dims[1], maxs[2]-dims[2]];
+    const channel = ranges[0] >= ranges[1]
+      ? (ranges[0] >= ranges[2] ? 0 : 2)
+      : (ranges[1] >= ranges[2] ? 1 : 2);
 
-    let channel: 0 | 1 | 2 = 0;
-    if (rangeG >= rangeR && rangeG >= rangeB) channel = 1;
-    else if (rangeB >= rangeR && rangeB >= rangeG) channel = 2;
+    const sub = indices.subarray(box.start, box.end);
+    sub.sort((a, b) => pixels[a][channel] - pixels[b][channel]);
 
-    p.sort((a, b) => a[channel] - b[channel]);
-
-    const median = Math.floor(p.length / 2);
-    while (median < p.length - 1 && p[median][channel] === p[median + 1][channel]) {
-      // push past equal values
-    }
-
-    const left = p.slice(0, median);
-    const right = p.slice(median);
-
-    if (left.length > 0) boxes.push({ pixels: left });
-    if (right.length > 0) boxes.push({ pixels: right });
+    const mid = box.start + Math.floor(len / 2);
+    boxes.push({ start: box.start, end: mid });
+    boxes.push({ start: mid, end: box.end });
   }
 
   return boxes.map((box) => {
     const sum = [0, 0, 0];
-    for (const px of box.pixels) {
-      sum[0] += px[0];
-      sum[1] += px[1];
-      sum[2] += px[2];
+    const len = box.end - box.start;
+    for (let i = box.start; i < box.end; i++) {
+      const px = pixels[indices[i]];
+      sum[0] += px[0]; sum[1] += px[1]; sum[2] += px[2];
     }
-    const n = box.pixels.length;
-    return [sum[0] / n, sum[1] / n, sum[2] / n];
+    return [sum[0] / len, sum[1] / len, sum[2] / len];
   });
 }
 
@@ -453,6 +455,7 @@ export async function extractPalette(
   algorithm: ExtractAlgorithm = "kmeans",
 ): Promise<ColorScheme> {
   const img = await loadImage(file);
+  const thumbnail = generateThumbnail(img, 400);
   const pixels = samplePixels(img, 2000);
   const extractor = extractors[algorithm];
   const colors = extractor(pixels, 16);
@@ -466,5 +469,8 @@ export async function extractPalette(
     }
   }
 
-  return colorsToScheme(colors.slice(0, 16), name || "From Image");
+  return {
+    ...colorsToScheme(colors.slice(0, 16), name || "From Image"),
+    sourceImage: thumbnail,
+  };
 }

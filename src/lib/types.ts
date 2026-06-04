@@ -4,6 +4,7 @@ export interface ColorScheme {
   name: string;
   author?: string;
   slug?: string;
+  sourceImage?: string;
   base00: HexColor;
   base01: HexColor;
   base02: HexColor;
@@ -22,7 +23,7 @@ export interface ColorScheme {
   base0F: HexColor;
 }
 
-export type BaseKey = keyof Omit<ColorScheme, "name" | "author" | "slug">;
+export type BaseKey = keyof Omit<ColorScheme, "name" | "author" | "slug" | "sourceImage">;
 
 export interface HSL {
   h: number;
