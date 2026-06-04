@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "export",
-  basePath: "/16ceditor",
+  basePath: process.env.NODE_ENV === "production" ? "/16ceditor" : undefined,
   images: { unoptimized: true },
 };
 
