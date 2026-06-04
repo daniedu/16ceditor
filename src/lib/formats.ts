@@ -94,6 +94,18 @@ export const exportFormats: ExportFormat[] = [
       `QListView::item:selected {\n  background: ${s.base0D};\n  color: ${s.base07};\n}\n`,
   },
   {
+    id: "base16-yaml",
+    label: "Base16 YAML",
+    extension: ".yaml",
+    mime: "text/yaml",
+    generate: (s) => {
+      const lines = [`scheme: "${s.name}"`];
+      if (s.author) lines.push(`author: "${s.author}"`);
+      for (const k of BASE_KEYS) lines.push(`${k}: "${stripHash(s[k])}"`);
+      return lines.join("\n") + "\n";
+    },
+  },
+  {
     id: "kde-konsole",
     label: "KDE Konsole",
     extension: ".colorscheme",
@@ -109,6 +121,30 @@ export const exportFormats: ExportFormat[] = [
       `[Color6Intense]\nColor=${s.base0C}\n[Color7Intense]\nColor=${s.base06}\n`,
   },
 ];
+
+export function parseBase16Yaml(text: string): Partial<ColorScheme> | null {
+  try {
+    const scheme: Partial<ColorScheme> = {};
+    for (const line of text.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const colonIdx = trimmed.indexOf(":");
+      if (colonIdx === -1) continue;
+      const key = trimmed.slice(0, colonIdx).trim();
+      let value = trimmed.slice(colonIdx + 1).trim();
+      value = value.replace(/^["']|["']$/g, "");
+      if (key === "scheme") scheme.name = value;
+      else if (key === "author") scheme.author = value;
+      else if (BASE_KEYS.includes(key as BaseKey)) {
+        const hex = value.startsWith("#") ? value : `#${value}`;
+        if (/^#[0-9a-fA-F]{6}$/.test(hex)) scheme[key as BaseKey] = hex;
+      }
+    }
+    return BASE_KEYS.every((k) => scheme[k] !== undefined) ? scheme : null;
+  } catch {
+    return null;
+  }
+}
 
 export function parseBase16Json(text: string): Partial<ColorScheme> | null {
   try {

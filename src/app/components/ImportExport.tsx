@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ColorScheme } from "@/src/lib/types";
-import { exportFormats, parseBase16Json } from "@/src/lib/formats";
+import { exportFormats, parseBase16Json, parseBase16Yaml } from "@/src/lib/formats";
 import { X, Check, Copy } from "lucide-react";
 
 interface ImportExportProps {
@@ -39,13 +39,13 @@ export default function ImportExport({ mode, scheme, onClose, onImport, onExport
   };
 
   const handleImportAction = () => {
-    const parsed = parseBase16Json(text);
+    const parsed = parseBase16Json(text) || parseBase16Yaml(text);
     if (parsed) {
       onImport(parsed);
       setText("");
       setError("");
     } else {
-      setError("Invalid format. Paste a Base16 JSON object with all 16 colors.");
+      setError("Invalid format. Paste Base16 JSON or YAML with all 16 colors.");
     }
   };
 
@@ -65,7 +65,7 @@ export default function ImportExport({ mode, scheme, onClose, onImport, onExport
           {mode === "import" ? (
             <div className="space-y-3">
               <div className="text-[14px]" style={{ color: scheme.base04 }}>
-                Paste Base16 JSON below:
+                Paste Base16 JSON or YAML below:
               </div>
               <textarea
                 className="w-full h-40 text-[13px] p-2 font-mono outline-none resize-none"
@@ -76,7 +76,7 @@ export default function ImportExport({ mode, scheme, onClose, onImport, onExport
                 }}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder='{"scheme":"My Theme","base00":"#131313",...}'
+                placeholder='Base16 JSON or YAML e.g. {"scheme":"My Theme","base00":"#131313",...}'
               />
               {error && <div className="text-[13px]" style={{ color: scheme.base08 }}>{error}</div>}
               <button
