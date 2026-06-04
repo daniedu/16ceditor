@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ColorScheme } from "@/src/lib/types";
 import { exportFormats, parseBase16Json, parseBase16Yaml } from "@/src/lib/formats";
+import { BASE_KEYS } from "@/src/lib/presets";
 import { X, Check, Copy } from "lucide-react";
 
 interface ImportExportProps {
@@ -30,6 +31,19 @@ export default function ImportExport({ mode, scheme, onClose, onImport, onExport
   }, [mode, onClose]);
 
   if (!mode || !scheme) return null;
+
+  function colorizeExport(content: string, s: ColorScheme): string {
+    const allColors = BASE_KEYS.map((k) => s[k].replace("#", ""));
+    return content.replace(
+      /(?:#|'|")?([0-9a-fA-F]{6})(?:'|")?/g,
+      (match, hex) => {
+        const upper = hex.toUpperCase();
+        if (!allColors.includes(upper) && !allColors.includes(hex)) return match;
+        const color = `#${hex}`;
+        return match.replace(hex, `<span style="color:${color}">${hex}</span>`);
+      },
+    );
+  }
 
   const handleCopy = (content: string, id: string) => {
     navigator.clipboard.writeText(content).then(() => {
@@ -114,12 +128,10 @@ export default function ImportExport({ mode, scheme, onClose, onImport, onExport
                     className="p-3 text-[15px] font-mono overflow-x-auto leading-relaxed"
                     style={{
                       background: scheme.base00,
-                      color: scheme.base04,
                       borderTop: `1px solid ${scheme.base02}`,
                     }}
-                  >
-                    {content}
-                  </pre>
+                    dangerouslySetInnerHTML={{ __html: colorizeExport(content, scheme) }}
+                  />
                 </div>
               );
             })
