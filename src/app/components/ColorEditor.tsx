@@ -4,32 +4,63 @@ import { useState, useRef, useEffect } from "react";
 import { HexColorPicker } from "react-colorful";
 import { ColorScheme, BaseKey, HexColor } from "@/src/lib/types";
 import { BASE_KEYS, SWATCH_LABELS, SWATCH_GROUPS } from "@/src/lib/presets";
-import { hexToHsl, hslToHex, contrastRatio, wcagLevel } from "@/src/lib/color";
+import { hexToHsl, contrastRatio, wcagLevel } from "@/src/lib/color";
+import { Undo2, Redo2, Pipette } from "lucide-react";
 
 function luminance(hex: string): number {
-  const hsl = hexToHsl(hex);
-  return hsl.l;
-}
-
-function autoFixSaturation(hex: string): string {
-  const hsl = hexToHsl(hex);
-  const targetL = hsl.l > 50 ? Math.min(hsl.l, 70) : Math.min(hsl.l, 55);
-  const targetS = Math.min(hsl.s, 75);
-  return hslToHex(hsl.h, targetS, targetL);
+  return hexToHsl(hex).l;
 }
 
 export default function ColorEditor({
   scheme,
   onChange,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  pickerTarget,
+  onPickerTargetChange,
 }: {
   scheme: ColorScheme;
   onChange: (s: ColorScheme) => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  pickerTarget?: BaseKey | null;
+  onPickerTargetChange?: (k: BaseKey | null) => void;
 }) {
   const set = (k: BaseKey, v: HexColor) => onChange({ ...scheme, [k]: v });
   const [openPicker, setOpenPicker] = useState<BaseKey | null>(null);
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="text-[13px] font-semibold tracking-wider" style={{ color: scheme.base04 }}>
+          COLOURS
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className="p-1 transition-opacity disabled:opacity-30"
+            style={{ color: scheme.base04 }}
+            title="Undo"
+          >
+            <Undo2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            className="p-1 transition-opacity disabled:opacity-30"
+            style={{ color: scheme.base04 }}
+            title="Redo"
+          >
+            <Redo2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
       {SWATCH_GROUPS.map((group) => (
         <div key={group.label}>
           <div className="text-[13px] font-semibold tracking-wider text-outline mb-1.5">{group.label}</div>
@@ -38,6 +69,7 @@ export default function ColorEditor({
               const hex = scheme[key];
               const lum = luminance(hex);
               const textColor = lum > 40 ? "#131313" : "#e4e2e1";
+              const isPicking = pickerTarget === key;
               return (
                 <SwatchCard
                   key={key}
@@ -46,9 +78,10 @@ export default function ColorEditor({
                   semantic={SWATCH_LABELS[key]}
                   textColor={textColor}
                   isOpen={openPicker === key}
+                  isPicking={isPicking}
                   onToggle={() => setOpenPicker(openPicker === key ? null : key)}
                   onChange={(c) => set(key, c)}
-                  onFix={() => set(key, autoFixSaturation(hex))}
+                  onPick={() => onPickerTargetChange?.(isPicking ? null : key)}
                 />
               );
             })}
@@ -92,9 +125,6 @@ export default function ColorEditor({
                 <span className="px-1 py-0.5 text-[10px]" style={{ color: c, border: `1px solid ${c}`, background: `${c}15` }}>
                   {level === "AAA" ? "AAA" : level === "AA" ? "AA" : "FAIL"}
                 </span>
-                {level === "fail" && (
-                  <span className="ml-auto" style={{ color: scheme.base08, fontSize: "10px" }}>ADJUST</span>
-                )}
               </div>
             );
           })}
@@ -104,12 +134,20 @@ export default function ColorEditor({
   );
 }
 
+function satLevel(hex: string): { pct: number; level: "low" | "mid" | "high" } {
+  const s = hexToHsl(hex).s;
+  return {
+    pct: Math.round(s),
+    level: s <= 40 ? "low" : s <= 70 ? "mid" : "high",
+  };
+}
+
 function SwatchCard({
-  hex, label, semantic, textColor, isOpen, onToggle, onChange, onFix,
+  hex, label, semantic, textColor, isOpen, isPicking, onToggle, onChange, onPick,
 }: {
   hex: string; label: string; semantic: string; textColor: string;
-  isOpen: boolean; onToggle: () => void; onChange: (c: string) => void;
-  onFix: () => void;
+  isOpen: boolean; isPicking: boolean; onToggle: () => void; onChange: (c: string) => void;
+  onPick: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [inputHex, setInputHex] = useState(hex);
@@ -128,11 +166,19 @@ function SwatchCard({
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen, onToggle]);
 
+  const sat = satLevel(hex);
+  const satColor = sat.level === "low" ? "#a6e3a1" : sat.level === "mid" ? "#f9e2af" : "#f38ba8";
+
   return (
-    <div ref={ref} className="relative group">
+    <div
+      ref={ref}
+      className="relative group"
+      style={isPicking ? { outline: `2px solid ${satColor}`, outlineOffset: 1, borderRadius: 4 } : undefined}
+    >
       <button
         onClick={onToggle}
         className="w-full cursor-pointer text-left border border-surface-high hover:border-outline-variant transition-all"
+        style={{ borderColor: isPicking ? satColor : undefined }}
       >
         <div
           className="h-12 flex items-end p-1.5"
@@ -148,12 +194,27 @@ function SwatchCard({
         </div>
       </button>
 
-      <button
-        onClick={(e) => { e.stopPropagation(); onFix(); }}
-        className="absolute top-1 right-1 px-1.5 py-0.5 text-[13px] bg-[#131313]/80 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        FIX SAT
-      </button>
+      <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <span
+          className="flex items-center gap-0.5 px-1 py-0.5 text-[10px] font-semibold"
+          style={{ background: "#131313cc", color: satColor }}
+          title={`Saturation: ${sat.pct}%`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: satColor }} />
+          S{sat.pct}
+        </span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onPick(); }}
+          className="p-1"
+          style={{
+            background: isPicking ? `${satColor}33` : "#131313cc",
+            color: satColor,
+          }}
+          title="Pick from source image"
+        >
+          <Pipette className="w-3 h-3" />
+        </button>
+      </div>
 
       {isOpen && (
         <div className="absolute top-full left-0 z-50 mt-1 bg-surface border border-surface-high p-2 shadow-lg">

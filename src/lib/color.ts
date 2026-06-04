@@ -119,3 +119,26 @@ export function adjustBrightnessForAnsi(hex: string, isBright: boolean): string 
   }
   return hex;
 }
+
+export function pickColorFromImage(
+  img: HTMLImageElement,
+  clientX: number,
+  clientY: number,
+): string | null {
+  const rect = img.getBoundingClientRect();
+  const localX = clientX - rect.left;
+  const localY = clientY - rect.top;
+  if (localX < 0 || localX > rect.width || localY < 0 || localY > rect.height) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0);
+
+  const px = Math.round((localX / rect.width) * img.naturalWidth);
+  const py = Math.round((localY / rect.height) * img.naturalHeight);
+  const data = ctx.getImageData(Math.min(px, img.naturalWidth - 1), Math.min(py, img.naturalHeight - 1), 1, 1).data;
+  if (data[3] < 128) return null;
+  return rgbToHex(data[0], data[1], data[2]);
+}

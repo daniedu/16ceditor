@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { ColorScheme, ViewTab } from "@/src/lib/types";
+import { ColorScheme, ViewTab, BaseKey } from "@/src/lib/types";
 import { presets, createEmptyScheme } from "@/src/lib/presets";
 import { usePersistedSchemes } from "@/src/lib/usePersistedSchemes";
+import { useUndoRedo } from "@/src/lib/useUndoRedo";
+import { pickColorFromImage } from "@/src/lib/color";
 import Sidebar from "./components/Sidebar";
 import ColorEditor from "./components/ColorEditor";
 import ContrastPanel from "./components/ContrastPanel";
@@ -13,6 +15,7 @@ import QtPreview from "./components/QtPreview";
 import CodePreview from "./components/CodePreview";
 import GeneratePanel from "./components/GeneratePanel";
 import ImportExport from "./components/ImportExport";
+import { Pipette } from "lucide-react";
 
 function nextSlug(schemes: ColorScheme[]): string {
   return `custom-${schemes.length + 1}`;
@@ -23,7 +26,10 @@ export default function Home() {
   const [activeSlug, setActiveSlug] = useState(presets[0].slug || "gruvbox-dark");
   const [activeTab, setActiveTab] = useState<ViewTab>("previews");
   const [modalMode, setModalMode] = useState<"import" | "export" | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<BaseKey | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+
+  const undoRedo = useUndoRedo<ColorScheme>();
 
   const FALLBACK_SCHEME = presets[0] || createEmptyScheme("Fallback");
   const activeScheme = schemes.find((s) => s.slug === activeSlug) || schemes[0] || FALLBACK_SCHEME;
@@ -31,11 +37,38 @@ export default function Home() {
   const handleSelect = useCallback((s: ColorScheme) => {
     setActiveSlug(s.slug || FALLBACK_SCHEME.slug || "");
     if (mainRef.current) mainRef.current.scrollTop = 0;
-  }, []);
+    setPickerTarget(null);
+    undoRedo.check(s.slug || "");
+  }, [undoRedo]);
 
   const handleChange = useCallback((updated: ColorScheme) => {
-    setSchemes((prev) => prev.map((s) => (s.slug === updated.slug ? updated : s)));
-  }, []);
+    const slug = updated.slug;
+    if (slug) {
+      setSchemes((prev) => {
+        const old = prev.find((s) => s.slug === slug);
+        if (old) undoRedo.push(slug, old);
+        return prev.map((s) => (s.slug === slug ? updated : s));
+      });
+    }
+  }, [undoRedo]);
+
+  const handleUndo = useCallback(() => {
+    const slug = activeScheme.slug;
+    if (!slug) return;
+    const prev = undoRedo.undo(slug, activeScheme);
+    if (prev) {
+      setSchemes((s) => s.map((x) => (x.slug === slug ? prev : x)));
+    }
+  }, [activeScheme, undoRedo]);
+
+  const handleRedo = useCallback(() => {
+    const slug = activeScheme.slug;
+    if (!slug) return;
+    const next = undoRedo.redo(slug, activeScheme);
+    if (next) {
+      setSchemes((s) => s.map((x) => (x.slug === slug ? next : x)));
+    }
+  }, [activeScheme, undoRedo]);
 
   const handleAdd = useCallback(() => {
     const slug = nextSlug(schemes);
@@ -76,7 +109,82 @@ export default function Home() {
     setActiveTab("previews");
   }, [schemes]);
 
+  const handleImageClick = useCallback((e: React.MouseEvent<HTMLImageElement>) => {
+    if (!pickerTarget) return;
+    const img = e.currentTarget;
+    const hex = pickColorFromImage(img, e.clientX, e.clientY);
+    if (hex) {
+      setSchemes((prev) => {
+        const old = prev.find((s) => s.slug === activeScheme.slug);
+        if (old) undoRedo.push(activeScheme.slug || "", old);
+        return prev.map((s) =>
+          s.slug === activeScheme.slug ? { ...s, [pickerTarget]: hex } : s
+        );
+      });
+      setPickerTarget(null);
+    }
+  }, [pickerTarget, activeScheme.slug, undoRedo]);
+
   const { base00, base01, base02, base03, base04, base05, base0D } = activeScheme;
+
+  const sourceImage = activeScheme.sourceImage && (
+    <div
+      className="flex flex-col border overflow-hidden"
+      style={{ borderColor: base02, background: base01 }}
+    >
+      <div
+        className="text-[12px] font-semibold px-3 py-1.5 flex items-center justify-between"
+        style={{ color: base04 }}
+      >
+        <span>SOURCE IMAGE</span>
+        {pickerTarget && (
+          <span className="flex items-center gap-1 text-[11px]" style={{ color: base0D }}>
+            <Pipette className="w-3 h-3" />
+            picking {pickerTarget}
+          </span>
+        )}
+      </div>
+      <img
+        src={activeScheme.sourceImage}
+        alt="Source"
+        className="w-full object-contain"
+        style={{
+          maxHeight: 320,
+          background: base00,
+          cursor: pickerTarget ? "crosshair" : "default",
+        }}
+        onClick={handleImageClick}
+      />
+    </div>
+  );
+
+  const sideSourceImage = activeScheme.sourceImage && (
+    <div className="flex flex-col border overflow-hidden" style={{ borderColor: base02 }}>
+      <div
+        className="text-[11px] font-semibold px-2 py-1 flex items-center justify-between"
+        style={{ color: base04 }}
+      >
+        <span>SOURCE IMAGE</span>
+        {pickerTarget && (
+          <span className="flex items-center gap-1 text-[10px]" style={{ color: base0D }}>
+            <Pipette className="w-2.5 h-2.5" />
+            {pickerTarget}
+          </span>
+        )}
+      </div>
+      <img
+        src={activeScheme.sourceImage}
+        alt="Source"
+        className="w-full object-contain"
+        style={{
+          maxHeight: 160,
+          background: base00,
+          cursor: pickerTarget ? "crosshair" : "default",
+        }}
+        onClick={handleImageClick}
+      />
+    </div>
+  );
 
   return (
     <div className="h-screen flex overflow-hidden" style={{ background: base00, color: base05 }}>
@@ -138,22 +246,7 @@ export default function Home() {
           <div ref={mainRef} className="flex-1 overflow-y-auto p-4">
             {activeTab === "previews" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {activeScheme.sourceImage && (
-                  <div
-                    className="flex flex-col border overflow-hidden"
-                    style={{ borderColor: base02, background: base01 }}
-                  >
-                    <div className="text-[12px] font-semibold px-3 py-1.5" style={{ color: base04 }}>
-                      SOURCE IMAGE
-                    </div>
-                    <img
-                      src={activeScheme.sourceImage}
-                      alt="Source"
-                      className="w-full object-contain"
-                      style={{ maxHeight: 320, background: base00 }}
-                    />
-                  </div>
-                )}
+                {sourceImage}
                 <TerminalPreview scheme={activeScheme} />
                 <GtkPreview scheme={activeScheme} />
                 <QtPreview scheme={activeScheme} />
@@ -163,7 +256,16 @@ export default function Home() {
 
             {activeTab === "editor" && (
               <div className="max-w-3xl">
-                <ColorEditor scheme={activeScheme} onChange={handleChange} />
+                <ColorEditor
+                  scheme={activeScheme}
+                  onChange={handleChange}
+                  canUndo={undoRedo.canUndo}
+                  canRedo={undoRedo.canRedo}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  pickerTarget={pickerTarget}
+                  onPickerTargetChange={setPickerTarget}
+                />
               </div>
             )}
 
@@ -184,20 +286,17 @@ export default function Home() {
             className="hidden xl:flex w-80 shrink-0 flex-col border-l overflow-y-auto p-3 space-y-4"
             style={{ background: base01, borderColor: base02 }}
           >
-            {activeScheme.sourceImage && (
-              <div className="flex flex-col border overflow-hidden" style={{ borderColor: base02 }}>
-                <div className="text-[11px] font-semibold px-2 py-1" style={{ color: base04 }}>
-                  SOURCE IMAGE
-                </div>
-                <img
-                  src={activeScheme.sourceImage}
-                  alt="Source"
-                  className="w-full object-contain"
-                  style={{ maxHeight: 160, background: base00 }}
-                />
-              </div>
-            )}
-            <ColorEditor scheme={activeScheme} onChange={handleChange} />
+            {sideSourceImage}
+            <ColorEditor
+              scheme={activeScheme}
+              onChange={handleChange}
+              canUndo={undoRedo.canUndo}
+              canRedo={undoRedo.canRedo}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              pickerTarget={pickerTarget}
+              onPickerTargetChange={setPickerTarget}
+            />
             <ContrastPanel scheme={activeScheme} />
           </div>
         </div>
