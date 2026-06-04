@@ -15,6 +15,7 @@ import QtPreview from "./components/QtPreview";
 import CodePreview from "./components/CodePreview";
 import GeneratePanel from "./components/GeneratePanel";
 import ImportExport from "./components/ImportExport";
+import ImagePicker from "./components/ImagePicker";
 import { Pipette } from "lucide-react";
 
 function nextSlug(schemes: ColorScheme[]): string {
@@ -27,6 +28,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<ViewTab>("previews");
   const [modalMode, setModalMode] = useState<"import" | "export" | null>(null);
   const [pickerTarget, setPickerTarget] = useState<BaseKey | null>(null);
+  const [showImagePicker, setShowImagePicker] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
   const undoRedo = useUndoRedo<ColorScheme>();
@@ -124,6 +126,26 @@ export default function Home() {
       setPickerTarget(null);
     }
   }, [pickerTarget, activeScheme.slug, undoRedo]);
+
+  const handleOpenPicker = useCallback(() => setShowImagePicker(true), []);
+
+  const handleImagePick = useCallback((key: BaseKey, hex: string) => {
+    setSchemes((prev) => {
+      const old = prev.find((s) => s.slug === activeScheme.slug);
+      if (old) undoRedo.push(activeScheme.slug || "", old);
+      return prev.map((s) =>
+        s.slug === activeScheme.slug ? { ...s, [key]: hex } : s
+      );
+    });
+  }, [activeScheme.slug, undoRedo]);
+
+  const handleImageUpload = useCallback((dataUrl: string) => {
+    setSchemes((prev) =>
+      prev.map((s) =>
+        s.slug === activeScheme.slug ? { ...s, sourceImage: dataUrl } : s
+      )
+    );
+  }, [activeScheme.slug]);
 
   const { base00, base01, base02, base03, base04, base05, base0D } = activeScheme;
 
@@ -265,6 +287,7 @@ export default function Home() {
                   onRedo={handleRedo}
                   pickerTarget={pickerTarget}
                   onPickerTargetChange={setPickerTarget}
+                  onOpenPicker={handleOpenPicker}
                 />
               </div>
             )}
@@ -296,6 +319,7 @@ export default function Home() {
               onRedo={handleRedo}
               pickerTarget={pickerTarget}
               onPickerTargetChange={setPickerTarget}
+              onOpenPicker={handleOpenPicker}
             />
             <ContrastPanel scheme={activeScheme} />
           </div>
@@ -324,6 +348,16 @@ export default function Home() {
         onImport={handleImport}
         onExported={() => setModalMode(null)}
       />
+
+      {showImagePicker && (
+        <ImagePicker
+          scheme={activeScheme}
+          sourceImage={activeScheme.sourceImage}
+          onPick={handleImagePick}
+          onImageUpload={handleImageUpload}
+          onClose={() => setShowImagePicker(false)}
+        />
+      )}
     </div>
   );
 }

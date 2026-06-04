@@ -5,7 +5,7 @@ import { HexColorPicker } from "react-colorful";
 import { ColorScheme, BaseKey, HexColor } from "@/src/lib/types";
 import { BASE_KEYS, SWATCH_LABELS, SWATCH_GROUPS } from "@/src/lib/presets";
 import { hexToHsl, contrastRatio, wcagLevel } from "@/src/lib/color";
-import { Undo2, Redo2, Pipette } from "lucide-react";
+import { Undo2, Redo2, Pipette, Crosshair } from "lucide-react";
 
 function luminance(hex: string): number {
   return hexToHsl(hex).l;
@@ -20,6 +20,7 @@ export default function ColorEditor({
   onRedo,
   pickerTarget,
   onPickerTargetChange,
+  onOpenPicker,
 }: {
   scheme: ColorScheme;
   onChange: (s: ColorScheme) => void;
@@ -29,6 +30,7 @@ export default function ColorEditor({
   onRedo?: () => void;
   pickerTarget?: BaseKey | null;
   onPickerTargetChange?: (k: BaseKey | null) => void;
+  onOpenPicker?: () => void;
 }) {
   const set = (k: BaseKey, v: HexColor) => onChange({ ...scheme, [k]: v });
   const [openPicker, setOpenPicker] = useState<BaseKey | null>(null);
@@ -57,6 +59,15 @@ export default function ColorEditor({
             title="Redo"
           >
             <Redo2 className="w-4 h-4" />
+          </button>
+          <div className="w-px h-4" style={{ background: scheme.base03 }} />
+          <button
+            onClick={onOpenPicker}
+            className="p-1 transition-opacity hover:opacity-80"
+            style={{ color: scheme.base0D }}
+            title="Image color picker"
+          >
+            <Crosshair className="w-4 h-4" />
           </button>
         </div>
       </div>
