@@ -31,7 +31,7 @@ export default function Home() {
   const [showImagePicker, setShowImagePicker] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
-  const undoRedo = useUndoRedo<ColorScheme>();
+  const undoRedo = useUndoRedo();
 
   const FALLBACK_SCHEME = presets[0] || createEmptyScheme("Fallback");
   const activeScheme = schemes.find((s) => s.slug === activeSlug) || schemes[0] || FALLBACK_SCHEME;
@@ -43,32 +43,38 @@ export default function Home() {
     undoRedo.check(s.slug || "");
   }, [undoRedo]);
 
-  const handleChange = useCallback((updated: ColorScheme) => {
-    const slug = updated.slug;
-    if (slug) {
-      setSchemes((prev) => {
-        const old = prev.find((s) => s.slug === slug);
-        if (old) undoRedo.push(slug, old);
-        return prev.map((s) => (s.slug === slug ? updated : s));
-      });
-    }
-  }, [undoRedo]);
+  const handleColorChange = useCallback((key: BaseKey, hex: string) => {
+    const slug = activeScheme.slug;
+    if (!slug) return;
+    undoRedo.push(slug, key, activeScheme[key], hex);
+    setSchemes((prev) =>
+      prev.map((s) => (s.slug === slug ? { ...s, [key]: hex } : s))
+    );
+  }, [activeScheme, undoRedo]);
 
   const handleUndo = useCallback(() => {
     const slug = activeScheme.slug;
     if (!slug) return;
-    const prev = undoRedo.undo(slug, activeScheme);
-    if (prev) {
-      setSchemes((s) => s.map((x) => (x.slug === slug ? prev : x)));
+    const entry = undoRedo.undo(slug);
+    if (entry) {
+      setSchemes((prev) =>
+        prev.map((s) =>
+          s.slug === slug ? { ...s, [entry.key]: entry.prev } : s
+        )
+      );
     }
   }, [activeScheme, undoRedo]);
 
   const handleRedo = useCallback(() => {
     const slug = activeScheme.slug;
     if (!slug) return;
-    const next = undoRedo.redo(slug, activeScheme);
-    if (next) {
-      setSchemes((s) => s.map((x) => (x.slug === slug ? next : x)));
+    const entry = undoRedo.redo(slug);
+    if (entry) {
+      setSchemes((prev) =>
+        prev.map((s) =>
+          s.slug === slug ? { ...s, [entry.key]: entry.prev } : s
+        )
+      );
     }
   }, [activeScheme, undoRedo]);
 
@@ -116,28 +122,29 @@ export default function Home() {
     const img = e.currentTarget;
     const hex = pickColorFromImage(img, e.clientX, e.clientY);
     if (hex) {
-      setSchemes((prev) => {
-        const old = prev.find((s) => s.slug === activeScheme.slug);
-        if (old) undoRedo.push(activeScheme.slug || "", old);
-        return prev.map((s) =>
-          s.slug === activeScheme.slug ? { ...s, [pickerTarget]: hex } : s
-        );
-      });
+      const slug = activeScheme.slug;
+      if (slug) undoRedo.push(slug, pickerTarget, activeScheme[pickerTarget], hex);
+      setSchemes((prev) =>
+        prev.map((s) =>
+          s.slug === slug ? { ...s, [pickerTarget]: hex } : s
+        )
+      );
       setPickerTarget(null);
     }
-  }, [pickerTarget, activeScheme.slug, undoRedo]);
+  }, [pickerTarget, activeScheme, undoRedo]);
 
   const handleOpenPicker = useCallback(() => setShowImagePicker(true), []);
 
   const handleImagePick = useCallback((key: BaseKey, hex: string) => {
-    setSchemes((prev) => {
-      const old = prev.find((s) => s.slug === activeScheme.slug);
-      if (old) undoRedo.push(activeScheme.slug || "", old);
-      return prev.map((s) =>
-        s.slug === activeScheme.slug ? { ...s, [key]: hex } : s
-      );
-    });
-  }, [activeScheme.slug, undoRedo]);
+    const slug = activeScheme.slug;
+    if (!slug) return;
+    undoRedo.push(slug, key, activeScheme[key], hex);
+    setSchemes((prev) =>
+      prev.map((s) =>
+        s.slug === slug ? { ...s, [key]: hex } : s
+      )
+    );
+  }, [activeScheme, undoRedo]);
 
   const handleImageUpload = useCallback((dataUrl: string) => {
     setSchemes((prev) =>
@@ -280,7 +287,7 @@ export default function Home() {
               <div className="max-w-3xl">
                 <ColorEditor
                   scheme={activeScheme}
-                  onChange={handleChange}
+                  onColorChange={handleColorChange}
                   canUndo={undoRedo.canUndo}
                   canRedo={undoRedo.canRedo}
                   onUndo={handleUndo}
@@ -312,7 +319,7 @@ export default function Home() {
             {sideSourceImage}
             <ColorEditor
               scheme={activeScheme}
-              onChange={handleChange}
+              onColorChange={handleColorChange}
               canUndo={undoRedo.canUndo}
               canRedo={undoRedo.canRedo}
               onUndo={handleUndo}

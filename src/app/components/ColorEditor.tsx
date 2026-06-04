@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { HexColorPicker } from "react-colorful";
 import { ColorScheme, BaseKey, HexColor } from "@/src/lib/types";
-import { BASE_KEYS, SWATCH_LABELS, SWATCH_GROUPS } from "@/src/lib/presets";
+import { SWATCH_LABELS, SWATCH_GROUPS } from "@/src/lib/presets";
 import { hexToHsl, contrastRatio, wcagLevel } from "@/src/lib/color";
 import { Undo2, Redo2, Pipette, Crosshair } from "lucide-react";
 
@@ -13,7 +13,7 @@ function luminance(hex: string): number {
 
 export default function ColorEditor({
   scheme,
-  onChange,
+  onColorChange,
   canUndo,
   canRedo,
   onUndo,
@@ -23,7 +23,7 @@ export default function ColorEditor({
   onOpenPicker,
 }: {
   scheme: ColorScheme;
-  onChange: (s: ColorScheme) => void;
+  onColorChange: (k: BaseKey, v: HexColor) => void;
   canUndo?: boolean;
   canRedo?: boolean;
   onUndo?: () => void;
@@ -32,7 +32,6 @@ export default function ColorEditor({
   onPickerTargetChange?: (k: BaseKey | null) => void;
   onOpenPicker?: () => void;
 }) {
-  const set = (k: BaseKey, v: HexColor) => onChange({ ...scheme, [k]: v });
   const [openPicker, setOpenPicker] = useState<BaseKey | null>(null);
 
   return (
@@ -91,7 +90,7 @@ export default function ColorEditor({
                   isOpen={openPicker === key}
                   isPicking={isPicking}
                   onToggle={() => setOpenPicker(openPicker === key ? null : key)}
-                  onChange={(c) => set(key, c)}
+                  onChange={(c) => onColorChange(key, c)}
                   onPick={() => onPickerTargetChange?.(isPicking ? null : key)}
                 />
               );

@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { ColorScheme, BaseKey } from "@/src/lib/types";
 import { BASE_KEYS, SWATCH_LABELS } from "@/src/lib/presets";
 import { rgbToHex } from "@/src/lib/color";
-import { X, ZoomIn, ZoomOut, Pipette, Crosshair } from "lucide-react";
+import { X, ZoomIn, ZoomOut, Pipette, Crosshair, Upload } from "lucide-react";
 
 interface ImagePickerProps {
   scheme: ColorScheme;
@@ -12,18 +12,6 @@ interface ImagePickerProps {
   onPick: (key: BaseKey, hex: string) => void;
   onImageUpload: (dataUrl: string) => void;
   onClose: () => void;
-}
-
-function generateThumbnail(img: HTMLImageElement, maxSize: number): string {
-  const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-  const w = Math.round(img.width * scale);
-  const h = Math.round(img.height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0, w, h);
-  return canvas.toDataURL("image/jpeg", 0.8);
 }
 
 export default function ImagePicker({
@@ -45,13 +33,8 @@ export default function ImagePicker({
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      const img = new Image();
-      img.onload = () => {
-        const thumb = generateThumbnail(img, 400);
-        setImageSrc(dataUrl);
-        onImageUpload(thumb);
-      };
-      img.src = dataUrl;
+      setImageSrc(dataUrl);
+      onImageUpload(dataUrl);
     };
     reader.readAsDataURL(file);
   }, [onImageUpload]);
@@ -115,6 +98,7 @@ export default function ImagePicker({
     onPick(targetKey, hex);
   }, [picking, zoom, pan, targetKey, onPick]);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const fullImageUrl = imageSrc || sourceImage;
 
   const { base00, base01, base02, base03, base04, base05, base0D } = scheme;
@@ -175,19 +159,39 @@ export default function ImagePicker({
               <ZoomIn className="w-4 h-4" />
             </button>
             <div className="w-px h-5 mx-1" style={{ background: base03 }} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleImageFile(f);
+              }}
+            />
             {fullImageUrl && (
-              <button
-                onClick={() => setPicking((p) => !p)}
-                className="flex items-center gap-1.5 px-3 py-1 text-[13px] font-semibold transition-all"
-                style={{
-                  background: picking ? base0D : "transparent",
-                  color: picking ? base00 : base05,
-                  border: `1px solid ${picking ? base0D : base03}`,
-                }}
-              >
-                <Pipette className="w-3.5 h-3.5" />
-                {picking ? "Picking..." : "Pick"}
-              </button>
+              <>
+                <button
+                  onClick={() => setPicking((p) => !p)}
+                  className="flex items-center gap-1.5 px-3 py-1 text-[13px] font-semibold transition-all"
+                  style={{
+                    background: picking ? base0D : "transparent",
+                    color: picking ? base00 : base05,
+                    border: `1px solid ${picking ? base0D : base03}`,
+                  }}
+                >
+                  <Pipette className="w-3.5 h-3.5" />
+                  {picking ? "Picking..." : "Pick"}
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 px-2 py-1 text-[12px] transition-all"
+                  style={{ color: base04, border: `1px solid ${base03}` }}
+                  title="Replace image"
+                >
+                  <Upload className="w-3 h-3" />
+                </button>
+              </>
             )}
             <div className="w-px h-5 mx-1" style={{ background: base03 }} />
             <button

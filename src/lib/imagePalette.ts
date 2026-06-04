@@ -41,25 +41,22 @@ function colorDistance(a: number[], b: number[]): number {
   return dr * dr + dg * dg + db * db;
 }
 
-function loadImage(file: File): Promise<HTMLImageElement> {
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("Failed to load image"));
-    img.src = URL.createObjectURL(file);
+    img.src = src;
   });
-}
-
-function generateThumbnail(img: HTMLImageElement, maxSize: number): string {
-  const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
-  const w = Math.round(img.width * scale);
-  const h = Math.round(img.height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0, w, h);
-  return canvas.toDataURL("image/jpeg", 0.8);
 }
 
 function samplePixels(
@@ -454,8 +451,8 @@ export async function extractPalette(
   file: File,
   algorithm: ExtractAlgorithm = "kmeans",
 ): Promise<ColorScheme> {
-  const img = await loadImage(file);
-  const thumbnail = generateThumbnail(img, 400);
+  const dataUrl = await fileToDataUrl(file);
+  const img = await loadImage(dataUrl);
   const pixels = samplePixels(img, 2000);
   const extractor = extractors[algorithm];
   const colors = extractor(pixels, 16);
@@ -471,6 +468,6 @@ export async function extractPalette(
 
   return {
     ...colorsToScheme(colors.slice(0, 16), name || "From Image"),
-    sourceImage: thumbnail,
+    sourceImage: dataUrl,
   };
 }
