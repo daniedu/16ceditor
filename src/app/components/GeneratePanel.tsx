@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { ColorScheme } from "@/src/lib/types";
 import { hexToHsl, hslToHex } from "@/src/lib/color";
 import { presets, BASE_KEYS } from "@/src/lib/presets";
-import { extractPalette } from "@/src/lib/imagePalette";
+import { extractPalette, type ExtractAlgorithm, ALGORITHM_LABELS } from "@/src/lib/imagePalette";
 import { Sparkles } from "lucide-react";
 
 function generateRandomScheme(name: string): ColorScheme {
@@ -66,6 +66,7 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
   const [generated, setGenerated] = useState<ColorScheme | null>(null);
   const [name, setName] = useState("");
   const [extracting, setExtracting] = useState(false);
+  const [algorithm, setAlgorithm] = useState<ExtractAlgorithm>("kmeans");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const previewScheme = generated || scheme;
@@ -165,6 +166,21 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
           </div>
         ) : (
           <div>
+            <div className="text-[12px] font-semibold mb-1" style={{ color: scheme.base04 }}>ALGORITHM</div>
+            <select
+              value={algorithm}
+              onChange={(e) => setAlgorithm(e.target.value as ExtractAlgorithm)}
+              className="w-full px-2 py-1 text-[13px] font-mono outline-none mb-2"
+              style={{
+                background: scheme.base00,
+                color: scheme.base05,
+                border: `1px solid ${scheme.base02}`,
+              }}
+            >
+              {(Object.keys(ALGORITHM_LABELS) as ExtractAlgorithm[]).map((a) => (
+                <option key={a} value={a}>{ALGORITHM_LABELS[a]}</option>
+              ))}
+            </select>
             <div className="text-[12px] font-semibold mb-1" style={{ color: scheme.base04 }}>UPLOAD IMAGE</div>
             <input
               ref={fileRef}
@@ -176,7 +192,7 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
                 if (!f) return;
                 setExtracting(true);
                 try {
-                  const result = await extractPalette(f);
+                  const result = await extractPalette(f, algorithm);
                   setGenerated(result);
                   setName(result.name);
                 } catch {}
