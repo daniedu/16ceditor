@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { ColorScheme, BaseKey } from "@/src/lib/types";
 import { BASE_KEYS, SWATCH_LABELS } from "@/src/lib/presets";
 import { rgbToHex } from "@/src/lib/color";
@@ -86,12 +86,9 @@ export default function ImagePicker({
     const imgY = (localY - pan.y) / zoom;
     if (imgX < 0 || imgX > img.naturalWidth || imgY < 0 || imgY > img.naturalHeight) return;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(img, 0, 0);
-    const data = ctx.getImageData(Math.round(imgX), Math.round(imgY), 1, 1).data;
+    const cvs = canvasRef.current;
+    if (!cvs) return;
+    const data = cvs.getContext("2d")!.getImageData(Math.round(imgX), Math.round(imgY), 1, 1).data;
     if (data[3] < 128) return;
     const hex = rgbToHex(data[0], data[1], data[2]);
     setPickedHex(hex);
@@ -99,7 +96,21 @@ export default function ImagePicker({
   }, [picking, zoom, pan, targetKey, onPick]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fullImageUrl = imageSrc || sourceImage;
+
+  useEffect(() => {
+    if (!fullImageUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const cvs = document.createElement("canvas");
+      cvs.width = img.naturalWidth;
+      cvs.height = img.naturalHeight;
+      cvs.getContext("2d")!.drawImage(img, 0, 0);
+      canvasRef.current = cvs;
+    };
+    img.src = fullImageUrl;
+  }, [fullImageUrl]);
 
   const { base00, base01, base02, base03, base04, base05, base0D } = scheme;
 
