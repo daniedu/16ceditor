@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #131313;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1b1c1c;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #484835;
+        }
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background-color: #d4d742;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#1f2020",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-tertiary-fixed": "#002018",
+                        "inverse-surface": "#e4e2e1",
+                        "inverse-primary": "#606200",
+                        "on-surface-variant": "#c9c8af",
+                        "surface-container-low": "#1b1c1c",
+                        "secondary-fixed-dim": "#d5c59e",
+                        "surface-tint": "#cacd39",
+                        "on-surface": "#e4e2e1",
+                        "on-background": "#e4e2e1",
+                        "secondary": "#d5c59e",
+                        "on-primary": "#313300",
+                        "primary-fixed": "#e7ea54",
+                        "on-error-container": "#ffdad6",
+                        "background": "#131313",
+                        "on-tertiary-container": "#2c4c42",
+                        "on-error": "#690005",
+                        "surface-container-high": "#2a2a2a",
+                        "tertiary-fixed": "#c7eadc",
+                        "on-primary-fixed-variant": "#484a00",
+                        "on-tertiary": "#16362c",
+                        "primary": "#d4d742",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#f2e1b8",
+                        "surface-container-highest": "#353535",
+                        "surface": "#131313",
+                        "on-tertiary-fixed-variant": "#2d4d42",
+                        "on-primary-container": "#484900",
+                        "tertiary-fixed-dim": "#abcec0",
+                        "inverse-on-surface": "#303030",
+                        "on-secondary-fixed": "#221b02",
+                        "secondary-container": "#504627",
+                        "primary-fixed-dim": "#cacd39",
+                        "tertiary-container": "#99bcae",
+                        "surface-bright": "#393939",
+                        "on-secondary": "#393013",
+                        "on-secondary-container": "#c3b48d",
+                        "outline-variant": "#484835",
+                        "outline": "#93927b",
+                        "surface-variant": "#353535",
+                        "on-primary-fixed": "#1c1d00",
+                        "tertiary": "#b4d8ca",
+                        "primary-container": "#b8bb26",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#504627",
+                        "surface-dim": "#131313"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "margin-page": "32px",
+                        "panel-padding": "12px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["JetBrains Mono"],
+                        "headline-md": ["JetBrains Mono"],
+                        "code-sm": ["JetBrains Mono"],
+                        "label-caps": ["JetBrains Mono"],
+                        "headline-lg": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "code-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                        "label-caps": ["11px", {"lineHeight": "16px", "fontWeight": "700"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface overflow-hidden">
+<!-- TopNavBar -->
+<header class="bg-surface-container text-primary flex justify-between items-center h-12 px-gutter w-full border-b border-outline-variant fixed top-0 z-50">
+<div class="flex items-center gap-6">
+<span class="font-headline-md text-headline-md font-bold text-primary tracking-tighter">Stylix Architect</span>
+<nav class="hidden md:flex items-center gap-4 h-full">
+<a class="font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high transition-colors px-3 py-1 rounded" href="#">Palettes</a>
+<a class="font-body-md text-body-md text-primary border-b-2 border-primary px-3 py-1" href="#">Previews</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high transition-colors px-3 py-1 rounded" href="#">Analysis</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high transition-colors px-3 py-1 rounded" href="#">Docs</a>
+</nav>
+</div>
+<div class="flex items-center gap-2">
+<button class="font-body-md text-body-md border border-outline px-4 py-1 hover:bg-surface-container-high transition-all">Import</button>
+<button class="font-body-md text-body-md bg-primary text-on-primary px-4 py-1 hover:brightness-110 transition-all">Export</button>
+</div>
+</header>
+<div class="flex h-screen pt-12">
+<!-- SideNavBar -->
+<aside class="bg-surface-container-low text-primary flex flex-col h-full w-64 border-r border-outline-variant py-panel-padding gap-unit fixed left-0">
+<div class="px-4 mb-4">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Project Alpha</h2>
+<p class="font-code-sm text-code-sm text-on-surface-variant opacity-70 uppercase tracking-widest">16-Color Workspace</p>
+</div>
+<div class="flex flex-col flex-1">
+<button class="flex items-center gap-3 px-4 py-3 font-code-sm text-code-sm text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-[18px]">palette</span>
+                    Base Colors
+                </button>
+<button class="flex items-center gap-3 px-4 py-3 font-code-sm text-code-sm bg-secondary-container text-on-secondary-container border-l-4 border-primary transition-all">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">desktop_windows</span>
+                    System UI
+                </button>
+<button class="flex items-center gap-3 px-4 py-3 font-code-sm text-code-sm text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+                    Terminal
+                </button>
+<button class="flex items-center gap-3 px-4 py-3 font-code-sm text-code-sm text-on-surface-variant hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-[18px]">contrast</span>
+                    Accessibility
+                </button>
+</div>
+<button class="mx-4 my-4 bg-primary text-on-primary py-2 px-4 font-label-caps text-label-caps uppercase tracking-tighter">New Theme</button>
+<div class="mt-auto pt-4 border-t border-outline-variant flex flex-col">
+<button class="flex items-center gap-3 px-4 py-2 font-code-sm text-code-sm text-on-surface-variant hover:bg-surface-container-high">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+                    Settings
+                </button>
+<button class="flex items-center gap-3 px-4 py-2 font-code-sm text-code-sm text-on-surface-variant hover:bg-surface-container-high">
+<span class="material-symbols-outlined text-[18px]">help</span>
+                    Support
+                </button>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="flex-1 ml-64 p-gutter overflow-y-auto custom-scrollbar bg-surface">
+<div class="mb-gutter">
+<h1 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">visibility</span>
+                    Environment Previews
+                </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Validate your 16-color palette across simulated toolkits and terminal environments. Visual changes sync in real-time with the palette engine.</p>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- GTK Simulation Panel -->
+<section class="lg:col-span-7 bg-surface-container-lowest border border-outline-variant p-panel-padding">
+<header class="flex justify-between items-center mb-4">
+<span class="font-label-caps text-label-caps text-outline uppercase">SIMULATION: GTK 4.0</span>
+<div class="flex gap-1">
+<div class="w-3 h-3 bg-error rounded-full"></div>
+<div class="w-3 h-3 bg-secondary rounded-full"></div>
+<div class="w-3 h-3 bg-primary rounded-full"></div>
+</div>
+</header>
+<div class="bg-surface-container border border-outline-variant rounded shadow-xl overflow-hidden">
+<!-- Mock Title Bar -->
+<div class="h-8 bg-surface-container-highest border-b border-outline-variant flex items-center px-3 justify-between">
+<span class="text-[12px] font-bold text-on-surface">File Explorer</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">remove</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">check_box_outline_blank</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">close</span>
+</div>
+</div>
+<!-- Mock Toolbar -->
+<div class="h-10 bg-surface-container-high border-b border-outline-variant flex items-center px-2 gap-4">
+<span class="text-[11px] text-primary">File</span>
+<span class="text-[11px] text-on-surface-variant">Edit</span>
+<span class="text-[11px] text-on-surface-variant">View</span>
+<span class="text-[11px] text-on-surface-variant">Go</span>
+<div class="ml-auto flex gap-2">
+<button class="bg-primary text-on-primary px-2 py-0.5 text-[10px] rounded">New Folder</button>
+<button class="border border-outline-variant text-on-surface px-2 py-0.5 text-[10px] rounded">Upload</button>
+</div>
+</div>
+<!-- Mock Content -->
+<div class="flex h-64 bg-surface-container-low">
+<div class="w-32 border-r border-outline-variant bg-surface-container p-2 flex flex-col gap-1">
+<div class="bg-secondary-container text-on-secondary-container text-[11px] px-2 py-1 rounded">Home</div>
+<div class="text-on-surface-variant text-[11px] px-2 py-1 hover:bg-surface-container-high cursor-pointer">Documents</div>
+<div class="text-on-surface-variant text-[11px] px-2 py-1 hover:bg-surface-container-high cursor-pointer">Downloads</div>
+<div class="text-on-surface-variant text-[11px] px-2 py-1 hover:bg-surface-container-high cursor-pointer">Projects</div>
+</div>
+<div class="flex-1 p-4 grid grid-cols-4 gap-4 overflow-hidden">
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-primary text-[32px]">folder</span>
+<span class="text-[10px] text-on-surface">src</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-primary text-[32px]">folder</span>
+<span class="text-[10px] text-on-surface">assets</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-secondary text-[32px]">description</span>
+<span class="text-[10px] text-on-surface">config.json</span>
+</div>
+<div class="flex flex-col items-center gap-1">
+<span class="material-symbols-outlined text-tertiary text-[32px]">image</span>
+<span class="text-[10px] text-on-surface">logo.png</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Terminal Panel -->
+<section class="lg:col-span-5 bg-surface-container-lowest border border-outline-variant p-panel-padding flex flex-col">
+<span class="font-label-caps text-label-caps text-outline uppercase mb-2">TERMINAL: ZSH</span>
+<div class="bg-[#0e0e0e] border border-outline-variant p-4 flex-1 font-mono text-[13px] leading-relaxed overflow-hidden">
+<div class="mb-1"><span class="text-[#abcec0]">~</span> <span class="text-primary">ls -la</span></div>
+<div class="grid grid-cols-1 gap-0 opacity-90">
+<div><span class="text-[#93927b]">drwxr-xr-x</span> <span class="text-[#cacd39]">user</span> <span class="text-[#b4d8ca]">4.0K</span> <span class="text-primary">bin/</span></div>
+<div><span class="text-[#93927b]">-rw-r--r--</span> <span class="text-[#cacd39]">user</span> <span class="text-[#b4d8ca]">1.2K</span> <span class="text-on-surface">README.md</span></div>
+<div><span class="text-[#93927b]">-rwxr-xr-x</span> <span class="text-[#cacd39]">user</span> <span class="text-[#b4d8ca]">256B</span> <span class="text-[#abcec0]">setup.sh*</span></div>
+<div><span class="text-[#93927b]">drwxr-xr-x</span> <span class="text-[#cacd39]">user</span> <span class="text-[#b4d8ca]">4.0K</span> <span class="text-secondary">config/</span></div>
+<div><span class="text-[#93927b]">-rw-r--r--</span> <span class="text-[#cacd39]">user</span> <span class="text-[#b4d8ca]">890B</span> <span class="text-[#ffb4ab]">LICENSE.txt</span></div>
+</div>
+<div class="mt-4 mb-2"><span class="text-[#abcec0]">~</span> <span class="text-primary">python --version</span></div>
+<div class="text-on-surface-variant">Python 3.11.4 [Base16-Stylix Engine]</div>
+<div class="mt-4 mb-2"><span class="text-[#abcec0]">~</span> <span class="terminal-cursor"></span></div>
+<!-- ANSI Color Swatch Test -->
+<div class="mt-8 flex gap-1">
+<div class="w-full h-4 bg-background border border-outline-variant"></div>
+<div class="w-full h-4 bg-error"></div>
+<div class="w-full h-4 bg-primary"></div>
+<div class="w-full h-4 bg-secondary"></div>
+<div class="w-full h-4 bg-tertiary"></div>
+<div class="w-full h-4 bg-outline"></div>
+<div class="w-full h-4 bg-on-surface-variant"></div>
+<div class="w-full h-4 bg-on-surface"></div>
+</div>
+</div>
+</section>
+<!-- Qt Application Panel -->
+<section class="lg:col-span-12 bg-surface-container-lowest border border-outline-variant p-panel-padding">
+<header class="flex justify-between items-center mb-4">
+<span class="font-label-caps text-label-caps text-outline uppercase">SIMULATION: Qt 6 Framework</span>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<input checked="" class="w-3 h-3 bg-surface-container border-outline-variant text-primary focus:ring-0" type="checkbox"/>
+<span class="text-[11px] text-on-surface-variant">Sync Settings</span>
+</div>
+<div class="flex items-center gap-2">
+<input class="w-3 h-3 bg-surface-container border-outline-variant text-primary focus:ring-0" type="checkbox"/>
+<span class="text-[11px] text-on-surface-variant">Auto-Refresh</span>
+</div>
+</div>
+</header>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Data List -->
+<div class="bg-surface-container border border-outline-variant">
+<div class="bg-surface-container-high px-3 py-1 border-b border-outline-variant font-label-caps text-[10px] text-on-surface-variant">ITEM LIST</div>
+<div class="p-2 flex flex-col gap-1 h-48 overflow-y-auto custom-scrollbar">
+<div class="flex justify-between items-center p-2 bg-surface-container-low border border-outline-variant hover:border-primary cursor-default transition-all">
+<span class="text-[11px] text-on-surface">Active Process 01</span>
+<span class="text-[10px] text-primary">RUNNING</span>
+</div>
+<div class="flex justify-between items-center p-2 bg-surface-container-low border border-outline-variant opacity-60">
+<span class="text-[11px] text-on-surface">Secondary Worker</span>
+<span class="text-[10px] text-on-surface-variant">IDLE</span>
+</div>
+<div class="flex justify-between items-center p-2 bg-surface-container-low border border-outline-variant hover:border-primary cursor-default transition-all">
+<span class="text-[11px] text-on-surface">Database Sync</span>
+<span class="text-[10px] text-primary">RUNNING</span>
+</div>
+<div class="flex justify-between items-center p-2 bg-surface-container-low border border-outline-variant border-error">
+<span class="text-[11px] text-on-surface">Error Logger</span>
+<span class="text-[10px] text-error">FAILED</span>
+</div>
+</div>
+</div>
+<!-- Controls -->
+<div class="bg-surface-container border border-outline-variant p-4 space-y-6">
+<div>
+<label class="text-[11px] text-on-surface-variant mb-2 block">System Volume</label>
+<input class="w-full accent-primary h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer" type="range"/>
+<div class="flex justify-between mt-1">
+<span class="text-[10px] text-outline">0%</span>
+<span class="text-[10px] text-primary">72%</span>
+<span class="text-[10px] text-outline">100%</span>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex items-center gap-3">
+<div class="w-10 h-5 bg-primary relative rounded-full">
+<div class="absolute right-1 top-1 w-3 h-3 bg-on-primary rounded-full"></div>
+</div>
+<span class="text-[11px] text-on-surface">Hardware Acceleration</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-5 bg-surface-container-highest relative rounded-full">
+<div class="absolute left-1 top-1 w-3 h-3 bg-outline rounded-full"></div>
+</div>
+<span class="text-[11px] text-on-surface-variant">Debug Overlays</span>
+</div>
+</div>
+</div>
+<!-- Info & Action -->
+<div class="bg-surface-container-high border border-outline-variant p-4 flex flex-col justify-between">
+<div>
+<h3 class="text-primary text-[14px] font-bold mb-2">Palette Distribution</h3>
+<p class="text-[11px] text-on-surface-variant leading-relaxed mb-4">The current theme utilizes high contrast ratios for primary UI actions. Terminal colors base08 through base0F are mapped to standard ANSI slots.</p>
+<div class="bg-surface-container-lowest p-3 border border-outline-variant">
+<div class="flex justify-between text-[10px] mb-1">
+<span class="text-outline">Luminance</span>
+<span class="text-on-surface">42%</span>
+</div>
+<div class="w-full bg-surface-container-highest h-1 overflow-hidden">
+<div class="bg-secondary h-full w-[42%]"></div>
+</div>
+</div>
+</div>
+<button class="w-full bg-secondary text-on-secondary font-label-caps text-label-caps py-2 hover:brightness-110 transition-all">RECALIBRATE ENGINE</button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Micro-interaction Scripts -->
+<script>
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.classList.add('scale-[0.98]');
+            });
+            el.addEventListener('mouseup', () => {
+                el.classList.remove('scale-[0.98]');
+            });
+            el.addEventListener('mouseleave', () => {
+                el.classList.remove('scale-[0.98]');
+            });
+        });
+
+        // Simple terminal typewriter effect simulation
+        const cursor = document.querySelector('.terminal-cursor');
+        setInterval(() => {
+            cursor.style.visibility = cursor.style.visibility === 'hidden' ? 'visible' : 'hidden';
+        }, 500);
+    </script>
+</body></html>
