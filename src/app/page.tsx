@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { ColorScheme, ViewTab, BaseKey } from "@/src/lib/types";
 import { presets, createEmptyScheme } from "@/src/lib/presets";
 import { usePersistedSchemes } from "@/src/lib/usePersistedSchemes";
@@ -36,6 +36,16 @@ export default function Home() {
   const isMobile = useMediaQuery("(max-width: 1023px)");
   const isPhone = useMediaQuery("(max-width: 767px)");
   const [mobileTab, setMobileTab] = useState<"colors" | "previews" | "tools">("colors");
+
+  useEffect(() => {
+    try {
+      const selectSlug = sessionStorage.getItem("select-scheme");
+      if (selectSlug && schemes.find((s) => s.slug === selectSlug)) {
+        setActiveSlug(selectSlug);
+        sessionStorage.removeItem("select-scheme");
+      }
+    } catch {}
+  }, []);
 
   const undoRedo = useUndoRedo();
 

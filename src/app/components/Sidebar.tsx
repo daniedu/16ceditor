@@ -1,7 +1,7 @@
 "use client";
 
 import { ColorScheme, ViewTab, BaseKey } from "@/src/lib/types";
-import { Palette, Eye, BarChart3, Sparkles, Plus, Copy, Download, Trash2, Upload, X } from "lucide-react";
+import { Palette, Eye, BarChart3, Sparkles, Plus, Copy, Download, Trash2, Upload, X, LayoutGrid } from "lucide-react";
 import { useMediaQuery } from "@/src/lib/useMediaQuery";
 
 interface SidebarProps {
@@ -173,7 +173,15 @@ export default function Sidebar({
           </div>
         </div>
 
-        <div className="border-t p-2" style={{ borderColor: scheme.base02 }}>
+        <div className="border-t p-2 space-y-1" style={{ borderColor: scheme.base02 }}>
+          <a
+            href="/schemes"
+            className="flex items-center justify-center gap-1 px-2 py-1 text-[13px] border"
+            style={{ borderColor: scheme.base03, color: scheme.base04 }}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Gallery
+          </a>
           <button
             onClick={onImport}
             className="w-full flex items-center justify-center gap-1 px-2 py-1 text-[13px] border"
