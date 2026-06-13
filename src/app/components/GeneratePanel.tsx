@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { ColorScheme } from "@/src/lib/types";
 import { hexToHsl, hslToHex } from "@/src/lib/color";
 import { presets, BASE_KEYS } from "@/src/lib/presets";
 import { extractPalette, type ExtractAlgorithm, ALGORITHM_LABELS } from "@/src/lib/imagePalette";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 
 function generateRandomScheme(name: string, seedHue?: number): ColorScheme {
   const hue = seedHue ?? Math.random() * 360;
@@ -54,6 +54,12 @@ function generateFromBase(base: ColorScheme, seed: number): ColorScheme {
   return result;
 }
 
+const ALL_ALGORITHMS: ExtractAlgorithm[] = [
+  "kmeans", "median-cut", "histogram", "octree",
+  "monochrome", "vibrant", "muted", "dominant",
+  "high-contrast", "complementary",
+];
+
 interface GeneratePanelProps {
   onSave: (s: ColorScheme) => void;
   scheme: ColorScheme;
@@ -67,6 +73,9 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
   const [name, setName] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [algorithm, setAlgorithm] = useState<ExtractAlgorithm>("kmeans");
+  const [compareResults, setCompareResults] = useState<Record<string, ColorScheme> | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const previewScheme = generated || scheme;
@@ -88,6 +97,49 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
     onSave({ ...generated, name: name || "Untitled" });
     setGenerated(null);
     setName("");
+    setCompareResults(null);
+  };
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setUploadedFile(f);
+    setExtracting(true);
+    setCompareResults(null);
+    try {
+      const result = await extractPalette(f, algorithm);
+      setGenerated(result);
+      setName(result.name);
+    } catch {}
+    setExtracting(false);
+  }, [algorithm]);
+
+  const handleCompareAll = useCallback(async () => {
+    if (!uploadedFile) return;
+    setComparing(true);
+    setCompareResults(null);
+    const results: Record<string, ColorScheme> = {};
+    try {
+      const entries = await Promise.all(
+        ALL_ALGORITHMS.map(async (alg) => {
+          const r = await extractPalette(uploadedFile, alg);
+          return [alg, r] as const;
+        })
+      );
+      for (const [alg, r] of entries) {
+        results[alg] = r;
+      }
+    } catch {}
+    setCompareResults(results);
+    setComparing(false);
+  }, [uploadedFile]);
+
+  const handleSelectResult = (alg: ExtractAlgorithm) => {
+    if (!compareResults?.[alg]) return;
+    setAlgorithm(alg);
+    setGenerated(compareResults[alg]);
+    setName(compareResults[alg].name);
+    setCompareResults(null);
   };
 
   const algorithmGroups: { label: string; algs: ExtractAlgorithm[] }[] = [
@@ -207,17 +259,7 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                setExtracting(true);
-                try {
-                  const result = await extractPalette(f, algorithm);
-                  setGenerated(result);
-                  setName(result.name);
-                } catch {}
-                setExtracting(false);
-              }}
+              onChange={handleFileChange}
             />
             {generated?.sourceImage ? (
               <div className="relative">
@@ -253,6 +295,21 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
                 )}
               </button>
             )}
+
+            {generated && uploadedFile && !compareResults && (
+              <button
+                onClick={handleCompareAll}
+                disabled={comparing}
+                className="w-full py-1.5 text-[13px] font-semibold flex items-center justify-center gap-1 disabled:opacity-50"
+                style={{ background: scheme.base00, color: scheme.base0D, border: `1px solid ${scheme.base0D}` }}
+              >
+                {comparing ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Comparing all algorithms...</>
+                ) : (
+                  <><Sparkles className="w-3.5 h-3.5" /> Compare All 10 Algorithms</>
+                )}
+              </button>
+            )}
           </div>
         )}
 
@@ -265,7 +322,7 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
           {mode === "image" ? "Select Image" : "Generate"}
         </button>
 
-        {generated && (
+        {generated && !compareResults && (
           <div className="space-y-2 pt-2 border-t" style={{ borderColor: scheme.base02 }}>
             <div className="flex items-center gap-2">
               <input
@@ -291,27 +348,76 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
         )}
       </div>
 
-      <div>
-        <div className="text-[12px] font-semibold mb-1.5" style={{ color: scheme.base04 }}>
-          {generated ? "PREVIEW" : "BASE THEME"}
-        </div>
-        <div className="grid grid-cols-2 gap-px border" style={{ borderColor: scheme.base02 }}>
-          {BASE_KEYS.map((k) => {
-            const c = generated ? generated[k] : basePreset[k];
-            return (
-              <div key={k} className="flex items-center gap-1.5 px-1.5 py-0.5" style={{ background: scheme.base00 }}>
-                <span className="w-4 h-3 shrink-0 border" style={{ background: c, borderColor: scheme.base02 }} />
-                <span className="text-[13px] font-mono" style={{ color: scheme.base04 }}>{k}</span>
-                <span className="text-[12px] font-mono ml-auto" style={{ color: scheme.base03 }}>{c}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        {!generated && (
-          <div className="mt-2 text-[12px]" style={{ color: scheme.base04 }}>
-            Click Generate to create a new palette.
+      <div className={compareResults ? "lg:col-span-2" : ""}>
+        {compareResults ? (
+          <div>
+            <div className="text-[12px] font-semibold mb-2" style={{ color: scheme.base04 }}>
+              COMPARE RESULTS — click Select to pick a scheme
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              {ALL_ALGORITHMS.map((alg) => {
+                const r = compareResults[alg];
+                if (!r) return null;
+                return (
+                  <div
+                    key={alg}
+                    className="flex flex-col border overflow-hidden"
+                    style={{ borderColor: scheme.base02, background: scheme.base00 }}
+                  >
+                    <div className="flex h-6 w-full">
+                      {BASE_KEYS.map((k) => (
+                        <div key={k} className="flex-1" style={{ background: r[k] }} />
+                      ))}
+                    </div>
+                    <div className="p-2 space-y-1 flex-1 flex flex-col">
+                      <div className="text-[11px] font-semibold truncate" style={{ color: scheme.base05 }}>
+                        {ALGORITHM_LABELS[alg]}
+                      </div>
+                      <div className="text-[9px] font-mono truncate" style={{ color: scheme.base03 }}>
+                        {r.base00} {r.base05} {r.base08}
+                      </div>
+                      <div className="grid grid-cols-8 gap-px mt-auto">
+                        {BASE_KEYS.slice(0, 8).map((k) => (
+                          <div key={k} className="aspect-square rounded-sm" style={{ background: r[k] }} />
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => handleSelectResult(alg)}
+                        className="w-full py-1 text-[11px] font-semibold mt-1"
+                        style={{ background: scheme.base0D, color: scheme.base00 }}
+                      >
+                        Select
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="text-[12px] font-semibold mb-1.5" style={{ color: scheme.base04 }}>
+              {generated ? "PREVIEW" : "BASE THEME"}
+            </div>
+            <div className="grid grid-cols-2 gap-px border" style={{ borderColor: scheme.base02 }}>
+              {BASE_KEYS.map((k) => {
+                const c = generated ? generated[k] : basePreset[k];
+                return (
+                  <div key={k} className="flex items-center gap-1.5 px-1.5 py-0.5" style={{ background: scheme.base00 }}>
+                    <span className="w-4 h-3 shrink-0 border" style={{ background: c, borderColor: scheme.base02 }} />
+                    <span className="text-[13px] font-mono" style={{ color: scheme.base04 }}>{k}</span>
+                    <span className="text-[12px] font-mono ml-auto" style={{ color: scheme.base03 }}>{c}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {!generated && (
+              <div className="mt-2 text-[12px]" style={{ color: scheme.base04 }}>
+                Click Generate to create a new palette.
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
