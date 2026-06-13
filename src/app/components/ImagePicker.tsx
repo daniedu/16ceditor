@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { ColorScheme, BaseKey } from "@/src/lib/types";
 import { BASE_KEYS, SWATCH_LABELS } from "@/src/lib/presets";
 import { rgbToHex } from "@/src/lib/color";
+import { useMediaQuery } from "@/src/lib/useMediaQuery";
 import { X, ZoomIn, ZoomOut, Pipette, Crosshair, Upload } from "lucide-react";
 
 interface ImagePickerProps {
@@ -109,6 +110,7 @@ export default function ImagePicker({
   }, [fullImageUrl]);
 
   const { base00, base01, base02, base03, base04, base05, base0D } = scheme;
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   return (
     <div
@@ -118,12 +120,13 @@ export default function ImagePicker({
       onMouseLeave={handleMouseUp}
     >
       <div
-        className="flex flex-col rounded-lg overflow-hidden"
+        className="flex flex-col overflow-hidden"
         style={{
-          width: "90vw",
-          height: "85vh",
+          width: isMobile ? "100vw" : "90vw",
+          height: isMobile ? "100vh" : "85vh",
           background: base01,
-          border: `1px solid ${base02}`,
+          border: isMobile ? "none" : `1px solid ${base02}`,
+          borderRadius: isMobile ? 0 : undefined,
         }}
       >
         <header
@@ -203,10 +206,10 @@ export default function ImagePicker({
             <div className="w-px h-5 mx-1" style={{ background: base03 }} />
             <button
               onClick={onClose}
-              className="p-1.5 transition-opacity hover:opacity-80"
+              className={`transition-opacity hover:opacity-80 ${isMobile ? "touch-target p-2" : "p-1.5"}`}
               style={{ color: base04 }}
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </header>
@@ -220,20 +223,40 @@ export default function ImagePicker({
           onMouseMove={handleMouseMove}
         >
           {fullImageUrl ? (
-            <img
-              ref={imgRef}
-              src={fullImageUrl}
-              alt="Source"
-              draggable={false}
-              onClick={handleImageClick}
-              style={{
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                transformOrigin: "0 0",
-                maxWidth: "none",
-                maxHeight: "none",
-                userSelect: "none",
-              }}
-            />
+            <>
+              <img
+                ref={imgRef}
+                src={fullImageUrl}
+                alt="Source"
+                draggable={false}
+                onClick={handleImageClick}
+                style={{
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                  transformOrigin: "0 0",
+                  maxWidth: "none",
+                  maxHeight: "none",
+                  userSelect: "none",
+                }}
+              />
+              {isMobile && (
+                <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+                  <button
+                    onClick={() => setZoom((z) => Math.min(20, z + 0.5))}
+                    className="touch-target bg-white rounded-full shadow-lg"
+                    style={{ color: "#131313" }}
+                  >
+                    <ZoomIn className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setZoom((z) => Math.max(0.25, z - 0.5))}
+                    className="touch-target bg-white rounded-full shadow-lg"
+                    style={{ color: "#131313" }}
+                  >
+                    <ZoomOut className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <label
               className="flex flex-col items-center justify-center gap-2 px-8 py-12 border-2 border-dashed rounded-lg cursor-pointer"
@@ -271,7 +294,7 @@ export default function ImagePicker({
                 }}
               >
                 <span
-                  className="w-6 h-6 rounded"
+                  className={`rounded ${isMobile ? "w-8 h-8" : "w-6 h-6"}`}
                   style={{ background: scheme[k], boxShadow: `inset 0 0 0 1px ${base03}` }}
                 />
                 <span className="text-[10px] font-mono" style={{ color: isTarget ? base05 : base04 }}>

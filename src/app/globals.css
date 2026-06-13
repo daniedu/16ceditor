@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+@theme {
+  --color-outline: #93927b;
+  --color-surface: #1b1c1c;
+  --color-surface-low: #131313;
+  --color-surface-high: #353535;
+  --color-error: #ffb4ab;
+  --color-outline-variant: #4a4a4a;
+  --color-primary: #d5c59e;
+  --breakpoint-xs: 480px;
+}
+
 body {
   font-family: "JetBrains Mono", monospace;
 }
@@ -13,4 +24,31 @@ body {
 
 .terminal-cursor {
   animation: blink 1s step-end infinite;
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swatch-touch {
+  height: 3.5rem;
+  width: 3.5rem;
+  border-radius: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .swatch-touch {
+    height: 3rem;
+    width: 3rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
 }

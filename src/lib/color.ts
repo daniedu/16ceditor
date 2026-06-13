@@ -142,3 +142,151 @@ export function pickColorFromImage(
   if (data[3] < 128) return null;
   return rgbToHex(data[0], data[1], data[2]);
 }
+
+// -- Perceptual Color Spaces (LAB/LCH) --
+
+export function rgbToLinear(c: number): number {
+  c /= 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+
+export function linearToRgb(c: number): number {
+  return c <= 0.0031308
+    ? Math.round(12.92 * c * 255)
+    : Math.round((1.055 * (c ** (1 / 2.4)) - 0.055) * 255);
+}
+
+export function rgbToLab(r: number, g: number, b: number): { l: number; a: number; b: number } {
+  const rL = rgbToLinear(r);
+  const gL = rgbToLinear(g);
+  const bL = rgbToLinear(b);
+
+  let x = rL * 0.4124564 + gL * 0.3575761 + bL * 0.1804375;
+  let y = rL * 0.2126729 + gL * 0.7151522 + bL * 0.0721750;
+  let z = rL * 0.0193339 + gL * 0.1191920 + bL * 0.9503041;
+
+  const D65 = { x: 0.95047, y: 1.00000, z: 1.08883 };
+  x /= D65.x;
+  y /= D65.y;
+  z /= D65.z;
+
+  const f = (t: number) => t > 0.008856 ? Math.pow(t, 1 / 3) : (7.787 * t) + (16 / 116);
+
+  const L = (116 * f(y)) - 16;
+  const a = 500 * (f(x) - f(y));
+  const bVal = 200 * (f(y) - f(z));
+
+  return { l: L, a, b: bVal };
+}
+
+export function labToLch(l: number, a: number, b: number): { l: number; c: number; h: number } {
+  const c = Math.sqrt(a * a + b * b);
+  let h = Math.atan2(b, a) * (180 / Math.PI);
+  if (h < 0) h += 360;
+  return { l, c, h };
+}
+
+export function hexToLab(hex: string) {
+  return rgbToLab(...hexToRgb(hex));
+}
+
+export function deltaE2000(lab1: { l: number; a: number; b: number }, lab2: { l: number; a: number; b: number }): number {
+  const [L1, a1, b1] = [lab1.l, lab1.a, lab1.b];
+  const [L2, a2, b2] = [lab2.l, lab2.a, lab2.b];
+
+  const avgL = (L1 + L2) / 2;
+  const C1 = Math.sqrt(a1 * a1 + b1 * b1);
+  const C2 = Math.sqrt(a2 * a2 + b2 * b2);
+  const avgC = (C1 + C2) / 2;
+  const G = 0.5 * (1 - Math.sqrt(Math.pow(avgC, 7) / (Math.pow(avgC, 7) + Math.pow(25, 7))));
+
+  const a1p = a1 * (1 + G);
+  const a2p = a2 * (1 + G);
+  const C1p = Math.sqrt(a1p * a1p + b1 * b1);
+  const C2p = Math.sqrt(a2p * a2p + b2 * b2);
+  const avgCp = (C1p + C2p) / 2;
+
+  let h1p = Math.atan2(b1, a1p) * (180 / Math.PI);
+  if (h1p < 0) h1p += 360;
+  let h2p = Math.atan2(b2, a2p) * (180 / Math.PI);
+  if (h2p < 0) h2p += 360;
+
+  const avgHp = Math.abs(h1p - h2p) > 180 ? (h1p + h2p + 360) / 2 : (h1p + h2p) / 2;
+
+  const T = 1 - 0.17 * Math.cos((avgHp - 30) * Math.PI / 180)
+    + 0.24 * Math.cos((2 * avgHp) * Math.PI / 180)
+    + 0.32 * Math.cos((3 * avgHp + 6) * Math.PI / 180)
+    - 0.20 * Math.cos((4 * avgHp - 63) * Math.PI / 180);
+
+  let dh = h2p - h1p;
+  if (Math.abs(dh) > 180) dh += h2p > h1p ? -360 : 360;
+  const dHp = 2 * Math.sqrt(C1p * C2p) * Math.sin((dh / 2) * Math.PI / 180);
+
+  const dL = L2 - L1;
+  const dCp = C2p - C1p;
+
+  const SL = 1 + (0.015 * (avgL - 50) ** 2) / Math.sqrt(20 + (avgL - 50) ** 2);
+  const SC = 1 + 0.045 * avgCp;
+  const SH = 1 + 0.015 * avgCp * T;
+
+  const tVal = (avgHp - 275) / 25;
+  const dTheta = 30 * Math.exp(-(tVal * tVal));
+  const RC = 2 * Math.sqrt(Math.pow(avgCp, 7) / (Math.pow(avgCp, 7) + Math.pow(25, 7)));
+  const RT = -RC * Math.sin(2 * dTheta * Math.PI / 180);
+
+  return Math.sqrt(
+    (dL / SL) ** 2 + (dCp / SC) ** 2 + (dHp / SH) ** 2 + RT * (dCp / SC) * (dHp / SH)
+  );
+}
+
+// -- Gamma Correction --
+
+export function applyGamma(hex: string, gamma: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  const correct = (c: number) => {
+    c = c / 255;
+    c = Math.pow(c, 1 / gamma);
+    return Math.round(Math.max(0, Math.min(255, c * 255)));
+  };
+  return rgbToHex(correct(r), correct(g), correct(b));
+}
+
+// -- Color Blindness Simulation --
+
+export type ColorBlindnessType = "protanopia" | "deuteranopia" | "tritanopia" | "achromatopsia";
+
+const cbMatrices: Record<ColorBlindnessType, number[][]> = {
+  protanopia: [
+    [0.567, 0.433, 0],
+    [0.558, 0.442, 0],
+    [0, 0.242, 0.758],
+  ],
+  deuteranopia: [
+    [0.625, 0.375, 0],
+    [0.7, 0.3, 0],
+    [0, 0.3, 0.7],
+  ],
+  tritanopia: [
+    [0.95, 0.05, 0],
+    [0, 0.433, 0.567],
+    [0, 0.475, 0.525],
+  ],
+  achromatopsia: [
+    [0.299, 0.587, 0.114],
+    [0.299, 0.587, 0.114],
+    [0.299, 0.587, 0.114],
+  ],
+};
+
+export function simulateColorBlindness(hex: string, type: ColorBlindnessType): string {
+  const [r, g, b] = hexToRgb(hex);
+  const m = cbMatrices[type];
+  const rNew = Math.round(r * m[0][0] + g * m[0][1] + b * m[0][2]);
+  const gNew = Math.round(r * m[1][0] + g * m[1][1] + b * m[1][2]);
+  const bNew = Math.round(r * m[2][0] + g * m[2][1] + b * m[2][2]);
+  return rgbToHex(
+    Math.max(0, Math.min(255, rNew)),
+    Math.max(0, Math.min(255, gNew)),
+    Math.max(0, Math.min(255, bNew)),
+  );
+}

@@ -7,8 +7,8 @@ import { presets, BASE_KEYS } from "@/src/lib/presets";
 import { extractPalette, type ExtractAlgorithm, ALGORITHM_LABELS } from "@/src/lib/imagePalette";
 import { Sparkles } from "lucide-react";
 
-function generateRandomScheme(name: string): ColorScheme {
-  const hue = Math.random() * 360;
+function generateRandomScheme(name: string, seedHue?: number): ColorScheme {
+  const hue = seedHue ?? Math.random() * 360;
   const scheme: Record<string, string> = {};
   for (let i = 0; i < 4; i++) {
     const t = i / 3;
@@ -74,7 +74,8 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
   const handleGenerate = () => {
     let result: ColorScheme;
     if (mode === "random") {
-      result = generateRandomScheme("");
+      const hue = hexToHsl(baseColor).h;
+      result = generateRandomScheme("", hue);
     } else {
       result = generateFromBase(basePreset, Math.floor(Math.random() * 12));
     }
@@ -88,6 +89,12 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
     setGenerated(null);
     setName("");
   };
+
+  const algorithmGroups: { label: string; algs: ExtractAlgorithm[] }[] = [
+    { label: "Standard", algs: ["kmeans", "median-cut", "histogram", "octree"] },
+    { label: "Themed", algs: ["monochrome", "vibrant", "muted", "dominant"] },
+    { label: "Accessibility", algs: ["high-contrast", "complementary"] },
+  ];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -167,21 +174,34 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
         ) : (
           <div>
             <div className="text-[12px] font-semibold mb-1" style={{ color: scheme.base04 }}>ALGORITHM</div>
-            <select
-              value={algorithm}
-              onChange={(e) => setAlgorithm(e.target.value as ExtractAlgorithm)}
-              className="w-full px-2 py-1 text-[13px] font-mono outline-none mb-2"
-              style={{
-                background: scheme.base00,
-                color: scheme.base05,
-                border: `1px solid ${scheme.base02}`,
-              }}
-            >
-              {(Object.keys(ALGORITHM_LABELS) as ExtractAlgorithm[]).map((a) => (
-                <option key={a} value={a}>{ALGORITHM_LABELS[a]}</option>
-              ))}
-            </select>
-            <div className="text-[12px] font-semibold mb-1" style={{ color: scheme.base04 }}>UPLOAD IMAGE</div>
+            {algorithmGroups.map((group) => (
+              <div key={group.label} className="mb-2">
+                <div className="text-[10px] font-semibold tracking-wider mb-0.5" style={{ color: scheme.base03 }}>
+                  {group.label}
+                </div>
+                <div className="space-y-0.5">
+                  {group.algs.map((a) => (
+                    <button
+                      key={a}
+                      onClick={() => setAlgorithm(a)}
+                      className="w-full flex items-center gap-1.5 px-2 py-1 text-[12px] border text-left transition-all"
+                      style={{
+                        background: algorithm === a ? `${scheme.base0D}20` : "transparent",
+                        borderColor: algorithm === a ? scheme.base0D : scheme.base02,
+                        color: algorithm === a ? scheme.base0D : scheme.base04,
+                      }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ background: algorithm === a ? scheme.base0D : scheme.base03 }}
+                      />
+                      {ALGORITHM_LABELS[a]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="text-[12px] font-semibold mb-1 mt-3" style={{ color: scheme.base04 }}>UPLOAD IMAGE</div>
             <input
               ref={fileRef}
               type="file"

@@ -6,6 +6,7 @@ import { presets, createEmptyScheme } from "@/src/lib/presets";
 import { usePersistedSchemes } from "@/src/lib/usePersistedSchemes";
 import { useUndoRedo } from "@/src/lib/useUndoRedo";
 import { pickColorFromImage } from "@/src/lib/color";
+import { useMediaQuery } from "@/src/lib/useMediaQuery";
 import Sidebar from "./components/Sidebar";
 import ColorEditor from "./components/ColorEditor";
 import ContrastPanel from "./components/ContrastPanel";
@@ -16,7 +17,7 @@ import CodePreview from "./components/CodePreview";
 import GeneratePanel from "./components/GeneratePanel";
 import ImportExport from "./components/ImportExport";
 import ImagePicker from "./components/ImagePicker";
-import { Pipette } from "lucide-react";
+import { Pipette, Menu, Palette, Eye, BarChart3, Sparkles, ChevronLeft } from "lucide-react";
 
 function nextSlug(schemes: ColorScheme[]): string {
   return `custom-${schemes.length + 1}`;
@@ -29,7 +30,12 @@ export default function Home() {
   const [modalMode, setModalMode] = useState<"import" | "export" | null>(null);
   const [pickerTarget, setPickerTarget] = useState<BaseKey | null>(null);
   const [showImagePicker, setShowImagePicker] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
+  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isPhone = useMediaQuery("(max-width: 767px)");
+  const [mobileTab, setMobileTab] = useState<"colors" | "previews" | "tools">("colors");
 
   const undoRedo = useUndoRedo();
 
@@ -154,7 +160,7 @@ export default function Home() {
     );
   }, [activeScheme.slug]);
 
-  const { base00, base01, base02, base03, base04, base05, base0D } = activeScheme;
+  const { base00, base01, base02, base03, base04, base05, base08, base0D } = activeScheme;
 
   const sourceImage = activeScheme.sourceImage && (
     <div
@@ -216,7 +222,20 @@ export default function Home() {
   );
 
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: base00, color: base05 }}>
+    <div
+      className="h-screen flex overflow-hidden"
+      style={{
+        background: base00,
+        color: base05,
+        '--color-outline': base04,
+        '--color-surface': base00,
+        '--color-surface-low': base01,
+        '--color-surface-high': base02 || base00,
+        '--color-error': base08,
+        '--color-outline-variant': base02,
+        '--color-primary': base0D,
+      } as React.CSSProperties}
+    >
       <Sidebar
         scheme={activeScheme}
         schemes={schemes}
@@ -230,6 +249,8 @@ export default function Home() {
         onTabChange={setActiveTab}
         onImport={() => setModalMode("import")}
         onExport={(s) => setModalMode("export")}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={() => setSidebarOpen((v) => !v)}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -237,11 +258,24 @@ export default function Home() {
           className="flex items-center gap-3 px-4 py-2 border-b shrink-0"
           style={{ background: base01, borderColor: base02 }}
         >
+          {isMobile && (
+            <button
+              onClick={() => setSidebarOpen((v) => !v)}
+              className="p-1.5 hover:opacity-80 lg:hidden touch-target"
+              style={{ color: base04 }}
+              aria-label="Toggle sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
           <span className="text-[14px] font-semibold" style={{ color: base05 }}>
-            {activeTab === "previews" && "Environment Previews"}
-            {activeTab === "editor" && "Palette Editor"}
-            {activeTab === "analysis" && "Contrast Analysis"}
-            {activeTab === "generate" && "Generate Theme"}
+            {isPhone && mobileTab === "colors" && "Palette Editor"}
+            {isPhone && mobileTab === "previews" && "Environment Previews"}
+            {isPhone && mobileTab === "tools" && "Tools"}
+            {!isPhone && activeTab === "previews" && "Environment Previews"}
+            {!isPhone && activeTab === "editor" && "Palette Editor"}
+            {!isPhone && activeTab === "analysis" && "Contrast Analysis"}
+            {!isPhone && activeTab === "generate" && "Generate Theme"}
           </span>
           <span
             className="text-[12px] px-1.5 py-0.5"
@@ -272,7 +306,7 @@ export default function Home() {
         </header>
 
         <div className="flex-1 flex overflow-hidden">
-          <div ref={mainRef} className="flex-1 overflow-y-auto p-4">
+          <div ref={mainRef} className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4">
             {activeTab === "previews" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {sourceImage}
@@ -312,6 +346,51 @@ export default function Home() {
             )}
           </div>
 
+          {!isPhone && (
+            <button
+              onClick={() => setRightSidebarOpen((v) => !v)}
+              className="xl:hidden fixed right-0 top-1/2 z-20 -translate-y-1/2 touch-target px-1 rounded-l border border-r-0"
+              style={{ background: base01, borderColor: base02, color: base04 }}
+              title={rightSidebarOpen ? "Close panel" : "Open panel"}
+            >
+              <ChevronLeft
+                className="w-4 h-4 transition-transform"
+                style={{ transform: rightSidebarOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              />
+            </button>
+          )}
+
+          {rightSidebarOpen && (
+            <div
+              className="xl:hidden fixed right-0 top-0 bottom-0 z-10 w-80 flex flex-col border-l overflow-y-auto p-3 space-y-4 shadow-2xl"
+              style={{ background: base01, borderColor: base02, marginTop: 0 }}
+            >
+              <div className="flex items-center justify-between pt-1 pb-2 border-b" style={{ borderColor: base02 }}>
+                <span className="text-[12px] font-semibold" style={{ color: base04 }}>TOOLS</span>
+                <button
+                  onClick={() => setRightSidebarOpen(false)}
+                  className="touch-target p-1"
+                  style={{ color: base04 }}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </div>
+              {sideSourceImage}
+              <ColorEditor
+                scheme={activeScheme}
+                onColorChange={handleColorChange}
+                canUndo={undoRedo.canUndo}
+                canRedo={undoRedo.canRedo}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                pickerTarget={pickerTarget}
+                onPickerTargetChange={setPickerTarget}
+                onOpenPicker={handleOpenPicker}
+              />
+              <ContrastPanel scheme={activeScheme} />
+            </div>
+          )}
+
           <div
             className="hidden xl:flex w-80 shrink-0 flex-col border-l overflow-y-auto p-3 space-y-4"
             style={{ background: base01, borderColor: base02 }}
@@ -332,20 +411,54 @@ export default function Home() {
           </div>
         </div>
 
-        <div
-          className="flex items-center justify-center gap-3 py-1.5 text-[11px] border-t shrink-0"
-          style={{ color: base04, borderColor: base02, background: base01 }}
-        >
-          <span>BASE16</span>
-          <span style={{ color: base03 }}>/</span>
-          <span>TERMINAL ANSI</span>
-          <span style={{ color: base03 }}>/</span>
-          <span>GTK</span>
-          <span style={{ color: base03 }}>/</span>
-          <span>Qt</span>
-          <span style={{ color: base03 }}>/</span>
-          <span>CODE PREVIEW</span>
-        </div>
+        {isPhone ? (
+          <nav
+            className="fixed bottom-0 left-0 right-0 z-30 flex border-t md:hidden"
+            style={{ background: base01, borderColor: base02 }}
+          >
+            {[
+              { id: "editor" as ViewTab, icon: Palette, label: "Colors", mobileId: "colors" as const },
+              { id: "previews" as ViewTab, icon: Eye, label: "Previews", mobileId: "previews" as const },
+              { id: "analysis" as ViewTab, icon: BarChart3, label: "Analysis", mobileId: "tools" as const },
+              { id: "generate" as ViewTab, icon: Sparkles, label: "Generate", mobileId: "tools" as const },
+            ].map((t) => {
+              const isActive = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setActiveTab(t.id);
+                    setMobileTab(t.mobileId);
+                    setSidebarOpen(false);
+                  }}
+                  className="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] transition-all"
+                  style={{
+                    color: isActive ? base0D : base04,
+                    borderTop: isActive ? `2px solid ${base0D}` : "2px solid transparent",
+                  }}
+                >
+                  <t.icon className="w-5 h-5" />
+                  {t.label}
+                </button>
+              );
+            })}
+          </nav>
+        ) : (
+          <div
+            className="flex items-center justify-center gap-3 py-1.5 text-[11px] border-t shrink-0"
+            style={{ color: base04, borderColor: base02, background: base01 }}
+          >
+            <span>BASE16</span>
+            <span style={{ color: base03 }}>/</span>
+            <span>TERMINAL ANSI</span>
+            <span style={{ color: base03 }}>/</span>
+            <span>GTK</span>
+            <span style={{ color: base03 }}>/</span>
+            <span>Qt</span>
+            <span style={{ color: base03 }}>/</span>
+            <span>CODE PREVIEW</span>
+          </div>
+        )}
       </div>
 
       <ImportExport

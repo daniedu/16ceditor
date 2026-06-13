@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { HexColorPicker } from "react-colorful";
 import { ColorScheme, BaseKey, HexColor } from "@/src/lib/types";
 import { SWATCH_LABELS, SWATCH_GROUPS } from "@/src/lib/presets";
@@ -44,7 +44,7 @@ export default function ColorEditor({
           <button
             onClick={onUndo}
             disabled={!canUndo}
-            className="p-1 transition-opacity disabled:opacity-30"
+            className="touch-target p-1 transition-opacity disabled:opacity-30"
             style={{ color: scheme.base04 }}
             title="Undo"
           >
@@ -53,7 +53,7 @@ export default function ColorEditor({
           <button
             onClick={onRedo}
             disabled={!canRedo}
-            className="p-1 transition-opacity disabled:opacity-30"
+            className="touch-target p-1 transition-opacity disabled:opacity-30"
             style={{ color: scheme.base04 }}
             title="Redo"
           >
@@ -62,7 +62,7 @@ export default function ColorEditor({
           <div className="w-px h-4" style={{ background: scheme.base03 }} />
           <button
             onClick={onOpenPicker}
-            className="p-1 transition-opacity hover:opacity-80"
+            className="touch-target p-1 transition-opacity hover:opacity-80"
             style={{ color: scheme.base0D }}
             title="Image color picker"
           >
@@ -74,7 +74,7 @@ export default function ColorEditor({
       {SWATCH_GROUPS.map((group) => (
         <div key={group.label}>
           <div className="text-[13px] font-semibold tracking-wider text-outline mb-1.5">{group.label}</div>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 gap-1.5">
             {group.keys.map((key) => {
               const hex = scheme[key];
               const lum = luminance(hex);
@@ -160,7 +160,9 @@ function SwatchCard({
   onPick: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const [inputHex, setInputHex] = useState(hex);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     setInputHex(hex);
@@ -176,6 +178,18 @@ function SwatchCard({
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen, onToggle]);
 
+  const handleToggle = useCallback(() => {
+    if (btnRef.current && !isOpen) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const popoverWidth = 240;
+      let left = rect.left + rect.width / 2 - popoverWidth / 2;
+      if (left < 8) left = 8;
+      if (left + popoverWidth > window.innerWidth - 8) left = window.innerWidth - popoverWidth - 8;
+      setPopoverPos({ top: rect.bottom + 4, left });
+    }
+    onToggle();
+  }, [isOpen, onToggle]);
+
   const sat = satLevel(hex);
   const satColor = sat.level === "low" ? "#a6e3a1" : sat.level === "mid" ? "#f9e2af" : "#f38ba8";
 
@@ -186,12 +200,13 @@ function SwatchCard({
       style={isPicking ? { outline: `2px solid ${satColor}`, outlineOffset: 1, borderRadius: 4 } : undefined}
     >
       <button
-        onClick={onToggle}
+        ref={btnRef}
+        onClick={handleToggle}
         className="w-full cursor-pointer text-left border border-surface-high hover:border-outline-variant transition-all"
         style={{ borderColor: isPicking ? satColor : undefined }}
       >
         <div
-          className="h-12 flex items-end p-1.5"
+          className="h-12 sm:h-14 flex items-end p-1.5"
           style={{ background: hex }}
         >
           <span className="text-[12px] font-semibold" style={{ color: textColor }}>
@@ -226,20 +241,25 @@ function SwatchCard({
         </button>
       </div>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 z-50 mt-1 bg-surface border border-surface-high p-2 shadow-lg">
-          <HexColorPicker color={hex} onChange={(c) => { onChange(c); setInputHex(c); }} />
-          <div className="mt-1.5 flex items-center gap-1">
-            <span className="text-outline text-[12px]">#</span>
-            <input
-              className="w-full bg-surface text-[#e4e2e1] text-[13px] px-1 py-0.5 border border-surface-high outline-none font-mono"
-              value={inputHex.replace("#", "")}
-              onChange={(e) => {
-                const v = "#" + e.target.value;
-                setInputHex("#" + e.target.value);
-                if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v);
-              }}
-            />
+      {isOpen && popoverPos && (
+        <div
+          className="fixed z-50"
+          style={{ top: popoverPos.top, left: popoverPos.left }}
+        >
+          <div className="bg-surface border border-surface-high p-2 shadow-lg">
+            <HexColorPicker color={hex} onChange={(c) => { onChange(c); setInputHex(c); }} />
+            <div className="mt-1.5 flex items-center gap-1">
+              <span className="text-outline text-[12px]">#</span>
+              <input
+                className="w-24 bg-surface text-[#e4e2e1] text-[13px] px-1 py-0.5 border border-surface-high outline-none font-mono"
+                value={inputHex.replace("#", "")}
+                onChange={(e) => {
+                  const v = "#" + e.target.value;
+                  setInputHex("#" + e.target.value);
+                  if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v);
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

@@ -1,37 +1,37 @@
 import { ColorScheme } from "./types";
+import { rgbToHex, hexToRgb, rgbToHsl, hslToRgb, contrastRatio } from "./color";
 
-export type ExtractAlgorithm = "kmeans" | "median-cut" | "histogram" | "octree";
+export type ExtractAlgorithm =
+  | "kmeans"
+  | "median-cut"
+  | "histogram"
+  | "octree"
+  | "monochrome"
+  | "vibrant"
+  | "muted"
+  | "dominant"
+  | "high-contrast"
+  | "complementary";
 
 export const ALGORITHM_LABELS: Record<ExtractAlgorithm, string> = {
   kmeans: "K-Means Clustering",
   "median-cut": "Median Cut",
   histogram: "Histogram Peak",
   octree: "Octree Quantization",
+  monochrome: "Monochrome + Accent",
+  vibrant: "Vibrant (Material)",
+  muted: "Muted / Pastel",
+  dominant: "Dominant Color",
+  "high-contrast": "High Contrast",
+  complementary: "Complementary",
 };
 
-function rgbToLuminance(r: number, g: number, b: number): number {
+function rgbLuminance(r: number, g: number, b: number): number {
   const f = (v: number) => {
     v /= 255;
     return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   };
   return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-}
-
-function rgbToHex(r: number, g: number, b: number): string {
-  const h = (n: number) =>
-    Math.max(0, Math.min(255, Math.round(n)))
-      .toString(16)
-      .padStart(2, "0");
-  return `#${h(r)}${h(g)}${h(b)}`;
-}
-
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace("#", "");
-  return [
-    parseInt(h.slice(0, 2), 16),
-    parseInt(h.slice(2, 4), 16),
-    parseInt(h.slice(4, 6), 16),
-  ];
 }
 
 function colorDistance(a: number[], b: number[]): number {
@@ -102,8 +102,8 @@ function sortByLuminance(
   colors: number[][],
 ): number[][] {
   return colors.sort((a, b) => {
-    const la = rgbToLuminance(a[0], a[1], a[2]);
-    const lb = rgbToLuminance(b[0], b[1], b[2]);
+    const la = rgbLuminance(a[0], a[1], a[2]);
+    const lb = rgbLuminance(b[0], b[1], b[2]);
     return la - lb;
   });
 }
@@ -438,6 +438,153 @@ function octreeExtract(pixels: number[][], k: number): number[][] {
   return tree.getPalette(k);
 }
 
+// -- Monochrome + Accent --
+
+function findDominantHue(pixels: number[][]): number {
+  const hueBuckets = new Array(36).fill(0);
+  for (const px of pixels) {
+    const { h } = rgbToHsl(px[0], px[1], px[2]);
+    const bucket = Math.floor(h / 10) % 36;
+    hueBuckets[bucket]++;
+  }
+  const maxBucket = hueBuckets.indexOf(Math.max(...hueBuckets));
+  return maxBucket * 10;
+}
+
+function extractMonochrome(pixels: number[][], _k: number): number[][] {
+  const dominantHue = findDominantHue(pixels);
+  const grayscaleLevels = [0, 36, 72, 108, 144, 180, 216, 255];
+  const baseColors = grayscaleLevels.map(v => [v, v, v]);
+  const accentColors = [0, 30, 60, 120, 180, 240, 300, 0].map((offset, i) => {
+    const h = (dominantHue + offset) % 360;
+    const s = i === 7 ? 40 : 70 + (i % 3) * 5;
+    const l = i === 7 ? 45 : 50 + (i % 3) * 5;
+    return hslToRgb(h, s, l);
+  });
+  return [...baseColors, ...accentColors];
+}
+
+// -- Vibrant Extraction --
+
+function extractVibrant(pixels: number[][], k: number): number[][] {
+  const vibrant = pixels.filter(([r, g, b]) => {
+    const { s, l } = rgbToHsl(r, g, b);
+    return s > 40 && l > 20 && l < 80;
+  });
+  if (vibrant.length < 16) return kMeans(pixels, 16, 20);
+  const sorted = [...vibrant].sort((a, b) => {
+    const { s: sa } = rgbToHsl(a[0], a[1], a[2]);
+    const { s: sb } = rgbToHsl(b[0], b[1], b[2]);
+    return sb - sa;
+  });
+  return sorted.slice(0, Math.min(k, sorted.length));
+}
+
+// -- Muted/Pastel Extraction --
+
+function extractMuted(pixels: number[][], k: number): number[][] {
+  const muted = pixels.filter(([r, g, b]) => {
+    const { s, l } = rgbToHsl(r, g, b);
+    return s < 30 && l > 15 && l < 85;
+  });
+  if (muted.length < 16) return kMeans(pixels, 16, 20);
+  return kMeans(muted, k, 20).map(([r, g, b]) => {
+    const { h, s, l } = rgbToHsl(Math.round(r), Math.round(g), Math.round(b));
+    return hslToRgb(h, Math.min(s, 20), Math.max(15, Math.min(80, l)));
+  });
+}
+
+// -- Dominant Color Extraction --
+
+function extractDominant(pixels: number[][], k: number): number[][] {
+  const clusters = kMeans(pixels, 16, 20);
+  const dominant = clusters.reduce((best, c) => {
+    const count = pixels.filter(p => {
+      const d2 = (p[0] - c[0]) ** 2 + (p[1] - c[1]) ** 2 + (p[2] - c[2]) ** 2;
+      return d2 < 5000;
+    }).length;
+    return count > (best.count || 0) ? { color: c, count } : best;
+  }, { color: clusters[0], count: 0 });
+
+  const { h } = rgbToHsl(Math.round(dominant.color[0]), Math.round(dominant.color[1]), Math.round(dominant.color[2]));
+  const neutrals = [5, 15, 25, 35, 55, 70, 82, 92].map(l => hslToRgb(h, 10 + (l < 40 ? l * 0.4 : 20 - l * 0.15), l));
+  const accents = [0, 30, 60, 120, 180, 210, 270, 0].map((offset, i) => {
+    const ah = (h + offset) % 360;
+    const s = i === 7 ? 40 : 70;
+    const l = i === 7 ? 45 : 55;
+    return hslToRgb(ah, s, l);
+  });
+  return [...neutrals, ...accents];
+}
+
+// -- High Contrast Extraction --
+
+function adjustLightness(hex: string, delta: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  let { h, s, l } = rgbToHsl(r, g, b);
+  l = Math.max(0, Math.min(100, l + delta));
+  return rgbToHex(...hslToRgb(h, s, l));
+}
+
+function extractHighContrast(pixels: number[][], k: number): number[][] {
+  const colors = kMeans(pixels, 16, 20);
+  const sorted = sortByLuminance(colors);
+  const hexes = sorted.map(c => rgbToHex(c[0], c[1], c[2]));
+
+  let base = hexes.slice(0, 8);
+  let accents = hexes.slice(8);
+
+  for (let i = 1; i < base.length; i++) {
+    while (contrastRatio(base[i - 1], base[i]) < 2.0) {
+      base[i] = adjustLightness(base[i], 5);
+    }
+  }
+  while (contrastRatio(base[0], base[7]) < 7.0) {
+    base[0] = adjustLightness(base[0], -3);
+    base[7] = adjustLightness(base[7], 3);
+  }
+  accents = accents.map(a => {
+    let c = a;
+    while (contrastRatio(c, base[0]) < 4.5) {
+      c = adjustLightness(c, 5);
+    }
+    return c;
+  });
+  const all = [...base, ...accents];
+  return all.map(h => { const [r, g, b] = hexToRgb(h); return [r, g, b]; });
+}
+
+// -- Complementary Extraction --
+
+function extractComplementary(pixels: number[][], _k: number): number[][] {
+  const hues = pixels.map(([r, g, b]) => Math.floor(rgbToHsl(r, g, b).h / 10) * 10);
+  const uniqueHues = [...new Set(hues)].sort((a, b) => a - b);
+
+  let bestPair = [0, 180];
+  let bestScore = 0;
+  for (let i = 0; i < uniqueHues.length; i++) {
+    for (let j = i + 1; j < uniqueHues.length; j++) {
+      const diff = Math.abs(uniqueHues[i] - uniqueHues[j]);
+      const score = 1 - Math.abs(diff - 180) / 180;
+      if (score > bestScore) {
+        bestScore = score;
+        bestPair = [uniqueHues[i], uniqueHues[j]];
+      }
+    }
+  }
+
+  const [hue1, hue2] = bestPair;
+  const neutrals = [10, 18, 25, 35, 55, 70, 82, 92].map(l => hslToRgb(hue1, l < 40 ? 20 + l * 0.3 : 25 - l * 0.15, l));
+  const accents = [0, 0, 60, 120, 180, 210, 270, 0].map((offset, i) => {
+    const baseHue = i % 2 === 0 ? hue1 : hue2;
+    const ah = (baseHue + offset) % 360;
+    const s = i === 7 ? 40 : 70;
+    const l = i === 7 ? 45 : 55;
+    return hslToRgb(ah, s, l);
+  });
+  return [...neutrals, ...accents];
+}
+
 // -- Main entry point --
 
 const extractors: Record<ExtractAlgorithm, (pixels: number[][], k: number) => number[][]> = {
@@ -445,6 +592,12 @@ const extractors: Record<ExtractAlgorithm, (pixels: number[][], k: number) => nu
   "median-cut": medianCutExtract,
   histogram: histogramExtract,
   octree: octreeExtract,
+  monochrome: extractMonochrome,
+  vibrant: extractVibrant,
+  muted: extractMuted,
+  dominant: extractDominant,
+  "high-contrast": extractHighContrast,
+  complementary: extractComplementary,
 };
 
 export async function extractPalette(
