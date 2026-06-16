@@ -1,5 +1,5 @@
 import { ColorScheme } from "./types";
-import { rgbToHex, hexToRgb, rgbToHsl, hslToRgb, contrastRatio } from "./color";
+import { rgbToHex, hexToRgb, rgbToHsl, hslToRgb, contrastRatio, rgbToLab, labToRgb, deltaE2000 } from "./color";
 
 export type ExtractAlgorithm =
   | "kmeans"
@@ -11,7 +11,8 @@ export type ExtractAlgorithm =
   | "muted"
   | "dominant"
   | "high-contrast"
-  | "complementary";
+  | "complementary"
+  | "quicktheme";
 
 export const ALGORITHM_LABELS: Record<ExtractAlgorithm, string> = {
   kmeans: "K-Means Clustering",
@@ -24,6 +25,7 @@ export const ALGORITHM_LABELS: Record<ExtractAlgorithm, string> = {
   dominant: "Dominant Color",
   "high-contrast": "High Contrast",
   complementary: "Complementary",
+  quicktheme: "Quicktheme (Perceptual)",
 };
 
 function rgbLuminance(r: number, g: number, b: number): number {
@@ -169,23 +171,26 @@ function kMeans(
     }
   }
 
-  let centroids: number[][] = [];
+  const centroids: number[][] = [];
   for (let i = 0; i < k; i++) {
-    const c: number[] = [];
+    const c: number[] = new Array(dim);
     for (let d = 0; d < dim; d++) {
-      c.push(min[d] + Math.random() * (max[d] - min[d]));
+      c[d] = min[d] + Math.random() * (max[d] - min[d]);
     }
     centroids.push(c);
   }
 
   const assignments = new Uint32Array(pixels.length);
+  const accum: number[][] = Array.from({ length: k }, () => new Array(dim));
+  const counts = new Uint32Array(k);
 
   for (let iter = 0; iter < maxIterations; iter++) {
     for (let i = 0; i < pixels.length; i++) {
       let bestDist = Infinity;
       let bestIdx = 0;
+      const px = pixels[i];
       for (let j = 0; j < k; j++) {
-        const dist = colorDistance(pixels[i], centroids[j]);
+        const dist = colorDistance(px, centroids[j]);
         if (dist < bestDist) {
           bestDist = dist;
           bestIdx = j;
@@ -194,31 +199,53 @@ function kMeans(
       assignments[i] = bestIdx;
     }
 
-    const newCentroids: number[][] = Array.from({ length: k }, () =>
-      new Array(dim).fill(0),
-    );
-    const counts = new Uint32Array(k);
+    for (let j = 0; j < k; j++) {
+      const a = accum[j];
+      for (let d = 0; d < dim; d++) {
+        a[d] = 0;
+      }
+    }
+    counts.fill(0);
+
     for (let i = 0; i < pixels.length; i++) {
       const a = assignments[i];
+      const px = pixels[i];
+      const dst = accum[a];
       for (let d = 0; d < dim; d++) {
-        newCentroids[a][d] += pixels[i][d];
+        dst[d] += px[d];
       }
       counts[a]++;
     }
 
     let changed = false;
     for (let j = 0; j < k; j++) {
+      const dst = accum[j];
       if (counts[j] > 0) {
+        const inv = 1 / counts[j];
         for (let d = 0; d < dim; d++) {
-          newCentroids[j][d] /= counts[j];
+          dst[d] *= inv;
         }
       } else {
-        newCentroids[j] = centroids[j].slice();
+        const src = centroids[j];
+        for (let d = 0; d < dim; d++) {
+          dst[d] = src[d];
+        }
       }
-      if (colorDistance(newCentroids[j], centroids[j]) > 1) changed = true;
+      let dist = 0;
+      const src = centroids[j];
+      for (let d = 0; d < dim; d++) {
+        const diff = dst[d] - src[d];
+        dist += diff * diff;
+      }
+      if (dist > 1) changed = true;
     }
 
-    centroids = newCentroids;
+    for (let j = 0; j < k; j++) {
+      const tmp = centroids[j];
+      centroids[j] = accum[j];
+      accum[j] = tmp;
+    }
+
     if (!changed) break;
   }
 
@@ -398,8 +425,11 @@ class Octree {
     }
   }
 
-  insert(r: number, g: number, b: number, maxLeaves: number) {
+  insert(r: number, g: number, b: number) {
     this.addColor(this.root, r, g, b, 0);
+  }
+
+  reduceTo(maxLeaves: number) {
     while (this.leafCount > maxLeaves) {
       this.reduce();
     }
@@ -433,8 +463,9 @@ class Octree {
 function octreeExtract(pixels: number[][], k: number): number[][] {
   const tree = new Octree();
   for (const px of pixels) {
-    tree.insert(px[0], px[1], px[2], k);
+    tree.insert(px[0], px[1], px[2]);
   }
+  tree.reduceTo(k);
   return tree.getPalette(k);
 }
 
@@ -585,6 +616,189 @@ function extractComplementary(pixels: number[][], _k: number): number[][] {
   return [...neutrals, ...accents];
 }
 
+// -- Quicktheme (Perceptual K-Means) --
+
+function computeClusterCounts(
+  pixels: number[][],
+  centroids: number[][],
+): number[] {
+  const counts = new Array(centroids.length).fill(0);
+  for (const p of pixels) {
+    let bestDist = Infinity;
+    let bestIdx = 0;
+    for (let j = 0; j < centroids.length; j++) {
+      const dl = p[0] - centroids[j][0];
+      const da = p[1] - centroids[j][1];
+      const db = p[2] - centroids[j][2];
+      const dist = dl * dl + da * da + db * db;
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = j;
+      }
+    }
+    counts[bestIdx]++;
+  }
+  return counts;
+}
+
+function deltaE2000Lab(lab1: number[], lab2: number[]): number {
+  return deltaE2000(
+    { l: lab1[0], a: lab1[1], b: lab1[2] },
+    { l: lab2[0], a: lab2[1], b: lab2[2] },
+  );
+}
+
+function selectFromClusters(
+  dominantLab: number[],
+  clusters: number[][],
+  counts: number[],
+  minDistance: number,
+  maxDistance: number,
+  minLightnessContrast: number,
+): number[][] {
+  const [dr, dg, db] = labToRgb(dominantLab[0], dominantLab[1], dominantLab[2]);
+  const colors: number[][] = [[dr, dg, db]];
+  const colorLabValues: number[][] = [dominantLab];
+
+  let foregroundPicked = false;
+  let currentMinDistance = minDistance;
+  let currentLightnessContrast = minLightnessContrast;
+
+  const sortedIndices = clusters
+    .map((_, i) => i)
+    .sort((a, b) => counts[b] - counts[a]);
+
+  while (true) {
+    if (currentMinDistance < 0) break;
+
+    for (const idx of sortedIndices) {
+      if (colors.length >= 16) break;
+
+      const prospectLab = clusters[idx];
+      const distances = colorLabValues.map(existing =>
+        deltaE2000Lab(prospectLab, existing),
+      );
+
+      const sorted = [...distances].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const minimum = sorted[0];
+
+      const lightnessContrast =
+        Math.abs(prospectLab[0] - colorLabValues[0][0]);
+
+      const properDistance =
+        median > currentMinDistance &&
+        minimum > currentMinDistance / 3.0 &&
+        distances[0] > currentMinDistance * 2.0 &&
+        distances.every(d => d < maxDistance) &&
+        lightnessContrast >= currentLightnessContrast;
+
+      if (!properDistance) continue;
+
+      const bgDist = deltaE2000Lab(prospectLab, colorLabValues[0]);
+      if (bgDist < currentMinDistance * 2.0) break;
+
+      const [pr, pg, pb] = labToRgb(
+        prospectLab[0],
+        prospectLab[1],
+        prospectLab[2],
+      );
+
+      if (
+        !foregroundPicked &&
+        deltaE2000Lab(prospectLab, colorLabValues[0]) >=
+          currentMinDistance * 3.0
+      ) {
+        colors.splice(1, 0, [pr, pg, pb]);
+        colorLabValues.splice(1, 0, prospectLab);
+        foregroundPicked = true;
+      } else {
+        colors.push([pr, pg, pb]);
+        colorLabValues.push(prospectLab);
+      }
+    }
+
+    currentMinDistance -= 2.0;
+    if (currentMinDistance <= 2.0) {
+      currentLightnessContrast = 0.0;
+    }
+  }
+
+  return colors;
+}
+
+function nudgeLightness(
+  colors: number[][],
+  minLightnessContrast: number,
+): void {
+  if (colors.length < 3 || minLightnessContrast <= 0) return;
+
+  const bgLab = rgbToLab(colors[0][0], colors[0][1], colors[0][2]);
+  const bgL = bgLab.l;
+
+  for (let i = 2; i < colors.length; i++) {
+    const c = colors[i];
+    const lab = rgbToLab(c[0], c[1], c[2]);
+    const diff = Math.abs(lab.l - bgL);
+
+    if (diff < minLightnessContrast) {
+      const needed = minLightnessContrast - diff;
+      lab.l = bgL < 50
+        ? Math.min(100, lab.l + needed)
+        : Math.max(0, lab.l - needed);
+
+      const [r, g, b] = labToRgb(lab.l, lab.a, lab.b);
+      colors[i] = [r, g, b];
+    }
+  }
+}
+
+function extractQuicktheme(pixels: number[][], _k: number): number[][] {
+  const labPixels = pixels.map(p => {
+    const lab = rgbToLab(p[0], p[1], p[2]);
+    return [lab.l, lab.a, lab.b];
+  });
+
+  const k4Centroids = kMeans(labPixels, 4, 20);
+  const k4Counts = computeClusterCounts(labPixels, k4Centroids);
+
+  const sorted4 = k4Centroids
+    .map((c, i) => ({ centroid: c, count: k4Counts[i] }))
+    .sort((a, b) => b.count - a.count);
+
+  let dominantLab = sorted4[0].centroid;
+  for (const option of sorted4) {
+    const white = [100, 0, 0];
+    const distToWhite = deltaE2000Lab(option.centroid, white);
+    if (distToWhite > 20) {
+      dominantLab = option.centroid;
+      break;
+    }
+  }
+
+  const k = Math.min(64, labPixels.length);
+  const k128Centroids = kMeans(labPixels, k, 10);
+  const k128Counts = computeClusterCounts(labPixels, k128Centroids);
+
+  const colors = selectFromClusters(
+    dominantLab,
+    k128Centroids,
+    k128Counts,
+    12,
+    100,
+    25,
+  );
+
+  nudgeLightness(colors, 25);
+
+  while (colors.length < 16) {
+    const pad = colors[colors.length % colors.length];
+    colors.push([...pad]);
+  }
+
+  return colors.slice(0, 16);
+}
+
 // -- Main entry point --
 
 const extractors: Record<ExtractAlgorithm, (pixels: number[][], k: number) => number[][]> = {
@@ -598,15 +812,26 @@ const extractors: Record<ExtractAlgorithm, (pixels: number[][], k: number) => nu
   dominant: extractDominant,
   "high-contrast": extractHighContrast,
   complementary: extractComplementary,
+  quicktheme: extractQuicktheme,
 };
+
+const pixelCache = new WeakMap<File, Promise<{ dataUrl: string; pixels: number[][] }>>();
 
 export async function extractPalette(
   file: File,
   algorithm: ExtractAlgorithm = "kmeans",
 ): Promise<ColorScheme> {
-  const dataUrl = await fileToDataUrl(file);
-  const img = await loadImage(dataUrl);
-  const pixels = samplePixels(img, 2000);
+  let promise = pixelCache.get(file);
+  if (!promise) {
+    promise = (async () => {
+      const dataUrl = await fileToDataUrl(file);
+      const img = await loadImage(dataUrl);
+      const pixels = samplePixels(img, 2000);
+      return { dataUrl, pixels };
+    })();
+    pixelCache.set(file, promise);
+  }
+  const { dataUrl, pixels } = await promise;
   const extractor = extractors[algorithm];
   const colors = extractor(pixels, 16);
 

@@ -190,6 +190,32 @@ export function hexToLab(hex: string) {
   return rgbToLab(...hexToRgb(hex));
 }
 
+export function labToRgb(l: number, a: number, b: number): [number, number, number] {
+  const D65 = { x: 0.95047, y: 1.00000, z: 1.08883 };
+  const fy = (l + 16) / 116;
+  const fx = a / 500 + fy;
+  const fz = fy - b / 200;
+
+  const f = (t: number) => {
+    const t3 = t * t * t;
+    return t3 > 0.008856 ? t3 : (t - 16 / 116) / 7.787;
+  };
+
+  const x = f(fx) * D65.x;
+  const y = f(fy) * D65.y;
+  const z = f(fz) * D65.z;
+
+  const rL = x *  3.2404542 + y * -1.5371385 + z * -0.4985314;
+  const gL = x * -0.9692660 + y *  1.8760108 + z *  0.0415560;
+  const bL = x *  0.0556434 + y * -0.2040259 + z *  1.0572252;
+
+  return [
+    linearToRgb(rL),
+    linearToRgb(gL),
+    linearToRgb(bL),
+  ];
+}
+
 export function deltaE2000(lab1: { l: number; a: number; b: number }, lab2: { l: number; a: number; b: number }): number {
   const [L1, a1, b1] = [lab1.l, lab1.a, lab1.b];
   const [L2, a2, b2] = [lab2.l, lab2.a, lab2.b];
