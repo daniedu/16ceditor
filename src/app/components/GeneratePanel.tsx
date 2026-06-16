@@ -55,9 +55,9 @@ function generateFromBase(base: ColorScheme, seed: number): ColorScheme {
 }
 
 const ALL_ALGORITHMS: ExtractAlgorithm[] = [
-  "kmeans", "median-cut", "histogram", "octree",
+  "kmeans", "median-cut", "histogram",
   "monochrome", "vibrant", "muted", "dominant",
-  "high-contrast", "complementary",
+  "high-contrast", "complementary", "quicktheme",
 ];
 
 interface GeneratePanelProps {
@@ -106,11 +106,14 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
     setUploadedFile(f);
     setExtracting(true);
     setCompareResults(null);
+    const label = ALGORITHM_LABELS[algorithm];
+    console.time(`extract: ${label}`);
     try {
       const result = await extractPalette(f, algorithm);
       setGenerated(result);
       setName(result.name);
     } catch {}
+    console.timeEnd(`extract: ${label}`);
     setExtracting(false);
   }, [algorithm]);
 
@@ -120,13 +123,11 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
     setCompareResults(null);
     const results: Record<string, ColorScheme> = {};
     try {
-      const entries = await Promise.all(
-        ALL_ALGORITHMS.map(async (alg) => {
-          const r = await extractPalette(uploadedFile, alg);
-          return [alg, r] as const;
-        })
-      );
-      for (const [alg, r] of entries) {
+      for (const alg of ALL_ALGORITHMS) {
+        const label = ALGORITHM_LABELS[alg];
+        console.time(`extract: ${label}`);
+        const r = await extractPalette(uploadedFile, alg);
+        console.timeEnd(`extract: ${label}`);
         results[alg] = r;
       }
     } catch {}
@@ -143,9 +144,10 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
   };
 
   const algorithmGroups: { label: string; algs: ExtractAlgorithm[] }[] = [
-    { label: "Standard", algs: ["kmeans", "median-cut", "histogram", "octree"] },
+    { label: "Standard", algs: ["kmeans", "median-cut", "histogram"] },
     { label: "Themed", algs: ["monochrome", "vibrant", "muted", "dominant"] },
     { label: "Accessibility", algs: ["high-contrast", "complementary"] },
+    { label: "Perceptual", algs: ["quicktheme"] },
   ];
 
   return (
