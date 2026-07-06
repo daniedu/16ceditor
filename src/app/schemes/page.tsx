@@ -7,6 +7,8 @@ import { usePersistedSchemes } from "@/src/lib/usePersistedSchemes";
 import { exportFormats } from "@/src/lib/formats";
 import { contrastRatio } from "@/src/lib/color";
 import { Palette, Eye, Download, Trash2, Copy, Plus, Search, LogOut } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const formatGroups: { label: string; ids: string[] }[] = [
   { label: "Terminal", ids: ["alacritty", "xresources", "terminal-sexy", "kde-konsole"] },
@@ -15,6 +17,7 @@ const formatGroups: { label: string; ids: string[] }[] = [
 ];
 
 export default function SchemesPage() {
+  const router = useRouter();
   const [schemes, setSchemes] = usePersistedSchemes();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "newest" | "contrast">("name");
@@ -66,7 +69,7 @@ export default function SchemesPage() {
     try {
       sessionStorage.setItem("select-scheme", slug);
     } catch {}
-    window.location.href = "/";
+    router.push("/");
   };
 
   const handleAddNew = () => {
@@ -116,14 +119,14 @@ export default function SchemesPage() {
             <Plus className="w-3.5 h-3.5" />
             New
           </button>
-          <a
+          <Link
             href="/"
             className="flex items-center gap-1 px-2 py-1 text-[13px]"
             style={{ color: "#93927b", border: "1px solid #353535" }}
           >
             <LogOut className="w-3.5 h-3.5" />
             Editor
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -134,13 +137,13 @@ export default function SchemesPage() {
             <span className="text-[15px]" style={{ color: "#93927b" }}>
               {search ? "No schemes match your search." : "No schemes yet. Create one in the editor!"}
             </span>
-            <a
+            <Link
               href="/"
               className="px-4 py-1.5 text-[13px] font-semibold"
               style={{ background: "#d5c59e", color: "#131313" }}
             >
               Go to Editor
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
