@@ -2,13 +2,19 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { HexColorPicker } from "react-colorful";
-import { ColorScheme, BaseKey, HexColor } from "@/src/lib/types";
-import { SWATCH_LABELS, SWATCH_GROUPS } from "@/src/lib/presets";
-import { hexToHsl, contrastRatio, wcagLevel } from "@/src/lib/color";
-import { Undo2, Redo2, Pipette, Crosshair } from "lucide-react";
+import { ColorScheme, BaseKey, HexColor, RoleMapping, DEFAULT_ROLE_MAPPING, ROLE_LABELS } from "@/src/lib/types";
+import { SWATCH_GROUPS } from "@/src/lib/presets";
+import { hexToHsl, hslToHex, hexToRgb, rgbToHex } from "@/src/lib/color";
+import { Undo2, Redo2, Pipette, Crosshair, SlidersHorizontal, Palette, Hash } from "lucide-react";
 
 function luminance(hex: string): number {
   return hexToHsl(hex).l;
+}
+
+function rolesForKey(mapping: RoleMapping, key: BaseKey): string[] {
+  return (Object.entries(mapping) as [string, BaseKey][])
+    .filter(([, v]) => v === key)
+    .map(([k]) => ROLE_LABELS[k as keyof typeof ROLE_LABELS]);
 }
 
 export default function ColorEditor({
@@ -21,6 +27,7 @@ export default function ColorEditor({
   pickerTarget,
   onPickerTargetChange,
   onOpenPicker,
+  mapping = DEFAULT_ROLE_MAPPING,
 }: {
   scheme: ColorScheme;
   onColorChange: (k: BaseKey, v: HexColor) => void;
@@ -31,6 +38,7 @@ export default function ColorEditor({
   pickerTarget?: BaseKey | null;
   onPickerTargetChange?: (k: BaseKey | null) => void;
   onOpenPicker?: () => void;
+  mapping?: RoleMapping;
 }) {
   const [openPicker, setOpenPicker] = useState<BaseKey | null>(null);
 
@@ -85,7 +93,7 @@ export default function ColorEditor({
                   key={key}
                   hex={hex}
                   label={key}
-                  semantic={SWATCH_LABELS[key]}
+                  roleLabels={rolesForKey(mapping, key)}
                   textColor={textColor}
                   isOpen={openPicker === key}
                   isPicking={isPicking}
@@ -99,63 +107,16 @@ export default function ColorEditor({
         </div>
       ))}
 
-      <div className="border-t pt-3" style={{ borderColor: scheme.base02 }}>
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-[13px] font-semibold tracking-wider text-outline">CONTRAST</div>
-          <span className="text-[10px] text-primary px-1 py-0.5 border border-primary">WCAG 2.1</span>
-        </div>
-        <div className="space-y-1">
-          {([
-            { bg: "base00", fg: "base05", label: "BG / FG" },
-            { bg: "base01", fg: "base05", label: "Container / FG" },
-            { bg: "base02", fg: "base05", label: "Input / FG" },
-            { bg: "base00", fg: "base0D", label: "BG / Blue" },
-            { bg: "base01", fg: "base04", label: "Container / Dark FG" },
-          ] as const).map((p) => {
-            const bg = scheme[p.bg];
-            const fg = scheme[p.fg];
-            const ratio = contrastRatio(bg, fg);
-            const level = wcagLevel(ratio);
-            const c = level === "AAA" ? scheme.base0B : level === "AA" ? scheme.base0A : scheme.base08;
-            return (
-              <div
-                key={p.label}
-                className="flex items-center gap-2 px-2 py-1 border text-[11px]"
-                style={{
-                  borderColor: scheme.base02,
-                  background: level === "fail" ? `${scheme.base08}10` : "transparent",
-                }}
-              >
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <span className="w-3 h-3 border" style={{ background: bg, borderColor: scheme.base03 }} />
-                  <span className="w-3 h-3 border" style={{ background: fg, borderColor: scheme.base03 }} />
-                </div>
-                <span className="text-outline w-20 shrink-0">{p.label}</span>
-                <span className="font-medium w-12 text-right" style={{ color: scheme.base05 }}>{ratio.toFixed(1)}:1</span>
-                <span className="px-1 py-0.5 text-[10px]" style={{ color: c, border: `1px solid ${c}`, background: `${c}15` }}>
-                  {level === "AAA" ? "AAA" : level === "AA" ? "AA" : "FAIL"}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }
 
-function satLevel(hex: string): { pct: number; level: "low" | "mid" | "high" } {
-  const s = hexToHsl(hex).s;
-  return {
-    pct: Math.round(s),
-    level: s <= 40 ? "low" : s <= 70 ? "mid" : "high",
-  };
-}
+type PickerMode = "picker" | "hsl" | "rgb";
 
 function SwatchCard({
-  hex, label, semantic, textColor, isOpen, isPicking, onToggle, onChange, onPick,
+  hex, label, roleLabels, textColor, isOpen, isPicking, onToggle, onChange, onPick,
 }: {
-  hex: string; label: string; semantic: string; textColor: string;
+  hex: string; label: string; roleLabels: string[]; textColor: string;
   isOpen: boolean; isPicking: boolean; onToggle: () => void; onChange: (c: string) => void;
   onPick: () => void;
 }) {
@@ -163,10 +124,18 @@ function SwatchCard({
   const btnRef = useRef<HTMLButtonElement>(null);
   const [inputHex, setInputHex] = useState(hex);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number } | null>(null);
+  const [pickerMode, setPickerMode] = useState<PickerMode>("picker");
+
+  const hsl = hexToHsl(hex);
+  const [r, g, b] = hexToRgb(hex);
 
   useEffect(() => {
     setInputHex(hex);
   }, [hex]);
+
+  useEffect(() => {
+    if (!isOpen) setPickerMode("picker");
+  }, [isOpen]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -190,20 +159,29 @@ function SwatchCard({
     onToggle();
   }, [isOpen, onToggle]);
 
-  const sat = satLevel(hex);
-  const satColor = sat.level === "low" ? "#a6e3a1" : sat.level === "mid" ? "#f9e2af" : "#f38ba8";
+  function handleHsl(h: number, s: number, l: number) {
+    const c = hslToHex(h, s, l);
+    onChange(c);
+    setInputHex(c);
+  }
+
+  function handleRgb(rv: number, gv: number, bv: number) {
+    const c = rgbToHex(rv, gv, bv);
+    onChange(c);
+    setInputHex(c);
+  }
 
   return (
     <div
       ref={ref}
       className="relative group"
-      style={isPicking ? { outline: `2px solid ${satColor}`, outlineOffset: 1, borderRadius: 4 } : undefined}
+      style={isPicking ? { outline: `2px solid ${hex}`, outlineOffset: 1, borderRadius: 4 } : undefined}
     >
       <button
         ref={btnRef}
         onClick={handleToggle}
         className="w-full cursor-pointer text-left border border-surface-high hover:border-outline-variant transition-all"
-        style={{ borderColor: isPicking ? satColor : undefined }}
+        style={{ borderColor: isPicking ? hex : undefined }}
       >
         <div
           className="h-12 sm:h-14 flex items-end p-1.5"
@@ -214,26 +192,18 @@ function SwatchCard({
           </span>
         </div>
         <div className="px-1.5 py-1 bg-surface-low">
-          <div className="text-[13px] text-[#e4e2e1] leading-tight">{semantic}</div>
+          <div className="text-[13px] text-[#e4e2e1] leading-tight">{roleLabels.join(", ") || label}</div>
           <div className="text-[12px] text-outline font-mono">{hex}</div>
         </div>
       </button>
 
       <div className="absolute top-1 right-1 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        <span
-          className="flex items-center gap-0.5 px-1 py-0.5 text-[10px] font-semibold"
-          style={{ background: "#131313cc", color: satColor }}
-          title={`Saturation: ${sat.pct}%`}
-        >
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: satColor }} />
-          S{sat.pct}
-        </span>
         <button
           onClick={(e) => { e.stopPropagation(); onPick(); }}
           className="p-1"
           style={{
-            background: isPicking ? `${satColor}33` : "#131313cc",
-            color: satColor,
+            background: "#131313cc",
+            color: textColor,
           }}
           title="Pick from source image"
         >
@@ -246,8 +216,43 @@ function SwatchCard({
           className="fixed z-50"
           style={{ top: popoverPos.top, left: popoverPos.left }}
         >
-          <div className="bg-surface border border-surface-high p-2 shadow-lg">
-            <HexColorPicker color={hex} onChange={(c) => { onChange(c); setInputHex(c); }} />
+          <div className="bg-surface border border-surface-high p-2 shadow-lg" style={{ width: 220 }}>
+            <div className="flex mb-1.5 border-b border-surface-high pb-1">
+              {(["picker", "hsl", "rgb"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setPickerMode(mode)}
+                  className="flex-1 text-[11px] py-1 font-medium transition-all"
+                  style={{
+                    color: pickerMode === mode ? "#e4e2e1" : "#93927b",
+                    borderBottom: pickerMode === mode ? "2px solid" : "2px solid transparent",
+                  }}
+                >
+                  {mode === "picker" ? "Picker" : mode === "hsl" ? "HSL" : "RGB"}
+                </button>
+              ))}
+            </div>
+
+            {pickerMode === "picker" && (
+              <HexColorPicker color={hex} onChange={(c) => { onChange(c); setInputHex(c); }} />
+            )}
+
+            {pickerMode === "hsl" && (
+              <div className="space-y-2 px-0.5">
+                <SliderInput label="H" value={Math.round(hsl.h)} min={0} max={360} onChange={(v) => handleHsl(v, hsl.s, hsl.l)} />
+                <SliderInput label="S" value={Math.round(hsl.s)} min={0} max={100} onChange={(v) => handleHsl(hsl.h, v, hsl.l)} />
+                <SliderInput label="L" value={Math.round(hsl.l)} min={0} max={100} onChange={(v) => handleHsl(hsl.h, hsl.s, v)} />
+              </div>
+            )}
+
+            {pickerMode === "rgb" && (
+              <div className="space-y-2 px-0.5">
+                <SliderInput label="R" value={r} min={0} max={255} onChange={(v) => handleRgb(v, g, b)} />
+                <SliderInput label="G" value={g} min={0} max={255} onChange={(v) => handleRgb(r, v, b)} />
+                <SliderInput label="B" value={b} min={0} max={255} onChange={(v) => handleRgb(r, g, v)} />
+              </div>
+            )}
+
             <div className="mt-1.5 flex items-center gap-1">
               <span className="text-outline text-[12px]">#</span>
               <input
@@ -263,6 +268,32 @@ function SwatchCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SliderInput({ label, value, min, max, onChange }: {
+  label: string; value: number; min: number; max: number; onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 text-[13px]">
+      <span className="text-outline w-3 shrink-0">{label}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="flex-1 h-2"
+      />
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(Math.min(max, Math.max(min, Number(e.target.value) || 0)))}
+        className="w-12 bg-surface text-[#e4e2e1] text-[12px] px-1 py-0.5 border border-surface-high outline-none text-right font-mono"
+      />
     </div>
   );
 }

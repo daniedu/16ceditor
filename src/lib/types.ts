@@ -48,3 +48,30 @@ export interface ExportFormat {
 }
 
 export type ViewTab = "previews" | "editor" | "analysis" | "generate";
+
+export type SemanticRole =
+  | "bg" | "container" | "input" | "muted"
+  | "darkFg" | "fg" | "lightFg" | "lightBg"
+  | "red" | "orange" | "yellow" | "green" | "cyan" | "blue" | "magenta" | "brown";
+
+export type RoleMapping = Record<SemanticRole, BaseKey>;
+
+export const DEFAULT_ROLE_MAPPING: RoleMapping = {
+  bg: "base00", container: "base01", input: "base02", muted: "base03",
+  darkFg: "base04", fg: "base05", lightFg: "base06", lightBg: "base07",
+  red: "base08", orange: "base09", yellow: "base0A", green: "base0B",
+  cyan: "base0C", blue: "base0D", magenta: "base0E", brown: "base0F",
+};
+
+export const ROLE_LABELS: Record<SemanticRole, string> = {
+  bg: "Background", container: "Container", input: "Input", muted: "Muted",
+  darkFg: "Dark FG", fg: "Foreground", lightFg: "Light FG", lightBg: "Light BG",
+  red: "Red", orange: "Orange", yellow: "Yellow", green: "Green",
+  cyan: "Cyan", blue: "Blue", magenta: "Magenta", brown: "Brown",
+};
+
+export const ROLE_GROUPS: { label: string; roles: SemanticRole[] }[] = [
+  { label: "Backgrounds", roles: ["bg", "container", "input", "muted"] },
+  { label: "Foregrounds", roles: ["darkFg", "fg", "lightFg", "lightBg"] },
+  { label: "Accents", roles: ["red", "orange", "yellow", "green", "cyan", "blue", "magenta", "brown"] },
+];

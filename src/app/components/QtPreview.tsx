@@ -1,10 +1,10 @@
 "use client";
 
-import { ColorScheme } from "@/src/lib/types";
+import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING } from "@/src/lib/types";
 import { schemeToQt } from "@/src/lib/mappings";
 
-export default function QtPreview({ scheme }: { scheme: ColorScheme }) {
-  const q = schemeToQt(scheme);
+export default function QtPreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme: ColorScheme; mapping?: RoleMapping }) {
+  const q = schemeToQt(scheme, mapping);
 
   return (
     <div className="border border-surface-high bg-surface overflow-hidden flex flex-col">
@@ -16,7 +16,7 @@ export default function QtPreview({ scheme }: { scheme: ColorScheme }) {
       </div>
 
       <div style={{ background: q.window, color: q.windowText }}>
-        <div className="flex items-center px-3 py-2 select-none border-b border-surface-high" style={{ background: scheme.base01 }}>
+        <div className="flex items-center px-3 py-2 select-none border-b border-surface-high" style={{ background: q.base }}>
           <span className="font-bold text-[15px] tracking-tight" style={{ color: q.highlight }}>Explorer</span>
           <span className="text-[13px] text-outline ml-3">File</span>
           <span className="text-[13px] text-outline ml-2">Edit</span>
@@ -27,7 +27,7 @@ export default function QtPreview({ scheme }: { scheme: ColorScheme }) {
           <span className="text-[15px] text-error">&#10005;</span>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-surface-high" style={{ background: scheme.base02 }}>
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-surface-high" style={{ background: q.button }}>
           <span className="text-[13px]" style={{ color: q.highlight }}>Home</span>
           <span className="text-[15px] text-outline">/</span>
           <span className="text-[15px] text-outline">Documents</span>
@@ -36,7 +36,7 @@ export default function QtPreview({ scheme }: { scheme: ColorScheme }) {
         </div>
 
         <div className="flex flex-1">
-          <div className="w-32 p-2 space-y-0.5 shrink-0 border-r border-surface-high" style={{ background: scheme.base01 }}>
+          <div className="w-32 p-2 space-y-0.5 shrink-0 border-r border-surface-high" style={{ background: q.base }}>
             {[
               { n: "Home", icon: "&#9660;", sel: true },
               { n: "Desktop", icon: "&#9654;", sel: false },
@@ -65,14 +65,14 @@ export default function QtPreview({ scheme }: { scheme: ColorScheme }) {
 
             <div className="space-y-1">
               {[
-                { n: "report.pdf", sz: "2.4 MB", c: scheme.base08 },
-                { n: "notes.txt", sz: "12 KB", c: scheme.base0B },
-                { n: "photo.jpg", sz: "3.7 MB", c: scheme.base0D },
-                { n: "budget.xlsx", sz: "156 KB", c: scheme.base0B },
+                { n: "report.pdf", sz: "2.4 MB", c: scheme[mapping.red] },
+                { n: "notes.txt", sz: "12 KB", c: scheme[mapping.green] },
+                { n: "photo.jpg", sz: "3.7 MB", c: scheme[mapping.blue] },
+                { n: "budget.xlsx", sz: "156 KB", c: scheme[mapping.green] },
               ].map((f, i) => (
                 <div key={f.n} className="flex items-center gap-2 px-2 py-1.5 text-[13px]" style={{
                   background: i === 2 ? q.highlight + "18" : "transparent",
-                  color: i === 2 ? q.windowText : scheme.base04,
+                  color: i === 2 ? q.windowText : scheme[mapping.darkFg],
                 }}>
                   <span className="text-[13px]" style={{ color: f.c }}>&#9632;</span>
                   <span className="flex-1">{f.n}</span>
@@ -83,7 +83,7 @@ export default function QtPreview({ scheme }: { scheme: ColorScheme }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-2 border-t border-surface-high" style={{ background: scheme.base01 }}>
+        <div className="flex items-center gap-2 px-3 py-2 border-t border-surface-high" style={{ background: q.base }}>
           <button className="px-3 py-1 text-[13px] border border-surface-high" style={{ background: q.button, color: q.buttonText }}>
             Open
           </button>

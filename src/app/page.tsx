@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { ColorScheme, ViewTab, BaseKey } from "@/src/lib/types";
+import { ColorScheme, ViewTab, BaseKey, RoleMapping, DEFAULT_ROLE_MAPPING } from "@/src/lib/types";
 import { presets, createEmptyScheme } from "@/src/lib/presets";
 import { usePersistedSchemes } from "@/src/lib/usePersistedSchemes";
 import { useUndoRedo } from "@/src/lib/useUndoRedo";
@@ -17,6 +17,7 @@ import CodePreview from "./components/CodePreview";
 import GeneratePanel from "./components/GeneratePanel";
 import ImportExport from "./components/ImportExport";
 import ImagePicker from "./components/ImagePicker";
+import RoleMappingEditor from "./components/RoleMappingEditor";
 import { Pipette, Menu, Palette, Eye, BarChart3, Sparkles, ChevronLeft } from "lucide-react";
 
 function nextSlug(schemes: ColorScheme[]): string {
@@ -27,6 +28,19 @@ export default function Home() {
   const [schemes, setSchemes] = usePersistedSchemes();
   const [activeSlug, setActiveSlug] = useState(presets[0].slug || "gruvbox-dark");
   const [activeTab, setActiveTab] = useState<ViewTab>("previews");
+  const [roleMapping, setRoleMapping] = useState<RoleMapping>(DEFAULT_ROLE_MAPPING);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("stylix-role-mapping");
+      if (saved) setRoleMapping(JSON.parse(saved) as RoleMapping);
+    } catch {}
+  }, []);
+
+  const handleMappingChange = useCallback((m: RoleMapping) => {
+    setRoleMapping(m);
+    try { localStorage.setItem("stylix-role-mapping", JSON.stringify(m)); } catch {}
+  }, []);
   const [modalMode, setModalMode] = useState<"import" | "export" | null>(null);
   const [pickerTarget, setPickerTarget] = useState<BaseKey | null>(null);
   const [showImagePicker, setShowImagePicker] = useState(false);
@@ -320,10 +334,10 @@ export default function Home() {
             {activeTab === "previews" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {sourceImage}
-                <TerminalPreview scheme={activeScheme} />
-                <GtkPreview scheme={activeScheme} />
-                <QtPreview scheme={activeScheme} />
-                <CodePreview scheme={activeScheme} />
+                <TerminalPreview scheme={activeScheme} mapping={roleMapping} />
+                <GtkPreview scheme={activeScheme} mapping={roleMapping} />
+                <QtPreview scheme={activeScheme} mapping={roleMapping} />
+                <CodePreview scheme={activeScheme} mapping={roleMapping} />
               </div>
             )}
 
@@ -339,13 +353,14 @@ export default function Home() {
                   pickerTarget={pickerTarget}
                   onPickerTargetChange={setPickerTarget}
                   onOpenPicker={handleOpenPicker}
+                  mapping={roleMapping}
                 />
               </div>
             )}
 
             {activeTab === "analysis" && (
               <div className="max-w-3xl">
-                <ContrastPanel scheme={activeScheme} />
+                <ContrastPanel scheme={activeScheme} mapping={roleMapping} />
               </div>
             )}
 
@@ -396,8 +411,10 @@ export default function Home() {
                 pickerTarget={pickerTarget}
                 onPickerTargetChange={setPickerTarget}
                 onOpenPicker={handleOpenPicker}
+                mapping={roleMapping}
               />
-              <ContrastPanel scheme={activeScheme} />
+              <RoleMappingEditor mapping={roleMapping} onChange={handleMappingChange} />
+              <ContrastPanel scheme={activeScheme} mapping={roleMapping} />
             </div>
           )}
 
@@ -416,8 +433,10 @@ export default function Home() {
               pickerTarget={pickerTarget}
               onPickerTargetChange={setPickerTarget}
               onOpenPicker={handleOpenPicker}
+              mapping={roleMapping}
             />
-            <ContrastPanel scheme={activeScheme} />
+            <RoleMappingEditor mapping={roleMapping} onChange={handleMappingChange} />
+            <ContrastPanel scheme={activeScheme} mapping={roleMapping} />
           </div>
         </div>
 

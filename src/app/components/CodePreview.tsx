@@ -1,6 +1,6 @@
 "use client";
 
-import { ColorScheme } from "@/src/lib/types";
+import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING } from "@/src/lib/types";
 
 const code = `fn fibonacci(n: u32) -> u32 {
   match n {
@@ -19,7 +19,7 @@ fn main() {
   println!("total: {}", count);
 }`;
 
-export default function CodePreview({ scheme }: { scheme: ColorScheme }) {
+export default function CodePreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme: ColorScheme; mapping?: RoleMapping }) {
   return (
     <div className="border border-surface-high bg-surface overflow-hidden flex flex-col">
       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-low border-b border-surface-high">
@@ -53,7 +53,7 @@ export default function CodePreview({ scheme }: { scheme: ColorScheme }) {
             <span className="w-6 text-right mr-2 shrink-0 select-none text-[15px] text-outline">
               {i + 1}
             </span>
-            <span>{tokenize(line, scheme)}</span>
+            <span>{tokenize(line, scheme, mapping)}</span>
           </div>
         ))}
       </pre>
@@ -70,25 +70,25 @@ export default function CodePreview({ scheme }: { scheme: ColorScheme }) {
   );
 }
 
-function tokenize(line: string, s: ColorScheme) {
+function tokenize(line: string, s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_MAPPING) {
   const parts: { text: string; color: string }[] = [];
   let i = 0;
   while (i < line.length) {
     const rest = line.slice(i);
     const kw = rest.match(/^(fn|let|mut|for|in|match|if|else|return|println|u32)\b/);
-    if (kw) { parts.push({ text: kw[1], color: s.base0E }); i += kw[1].length; continue; }
+    if (kw) { parts.push({ text: kw[1], color: s[mapping.magenta] }); i += kw[1].length; continue; }
     const num = rest.match(/^\d+/);
-    if (num) { parts.push({ text: num[0], color: s.base09 }); i += num[0].length; continue; }
+    if (num) { parts.push({ text: num[0], color: s[mapping.orange] }); i += num[0].length; continue; }
     const id = rest.match(/^[a-zA-Z_]\w*/);
-    if (id) { parts.push({ text: id[0], color: s.base05 }); i += id[0].length; continue; }
+    if (id) { parts.push({ text: id[0], color: s[mapping.fg] }); i += id[0].length; continue; }
     const str = rest.match(/^"[^"]*"/);
-    if (str) { parts.push({ text: str[0], color: s.base0B }); i += str[0].length; continue; }
-    if ("(){}".includes(rest[0])) { parts.push({ text: rest[0], color: s.base0D }); i++; continue; }
-    if ("=+-!><.".includes(rest[0])) { parts.push({ text: rest[0], color: s.base0C }); i++; continue; }
-    if (":;,".includes(rest[0])) { parts.push({ text: rest[0], color: s.base04 }); i++; continue; }
-    if (rest[0] === "_") { parts.push({ text: "_", color: s.base0A }); i++; continue; }
-    if (rest[0] === " ") { parts.push({ text: " ", color: s.base05 }); i++; continue; }
-    parts.push({ text: rest[0], color: s.base03 }); i++;
+    if (str) { parts.push({ text: str[0], color: s[mapping.green] }); i += str[0].length; continue; }
+    if ("(){}".includes(rest[0])) { parts.push({ text: rest[0], color: s[mapping.blue] }); i++; continue; }
+    if ("=+-!><.".includes(rest[0])) { parts.push({ text: rest[0], color: s[mapping.cyan] }); i++; continue; }
+    if (":;,".includes(rest[0])) { parts.push({ text: rest[0], color: s[mapping.darkFg] }); i++; continue; }
+    if (rest[0] === "_") { parts.push({ text: "_", color: s[mapping.yellow] }); i++; continue; }
+    if (rest[0] === " ") { parts.push({ text: " ", color: s[mapping.fg] }); i++; continue; }
+    parts.push({ text: rest[0], color: s[mapping.muted] }); i++;
   }
   return parts.map((p, j) => <span key={j} style={{ color: p.color }}>{p.text}</span>);
 }

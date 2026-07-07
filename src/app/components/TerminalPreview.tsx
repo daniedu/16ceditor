@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ColorScheme } from "@/src/lib/types";
+import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING } from "@/src/lib/types";
 import { schemeToAnsi } from "@/src/lib/mappings";
 import { applyGamma } from "@/src/lib/color";
 
@@ -20,10 +20,10 @@ const prompt = (a: ReturnType<typeof schemeToAnsi>) => (
   </span>
 );
 
-export default function TerminalPreview({ scheme }: { scheme: ColorScheme }) {
+export default function TerminalPreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme: ColorScheme; mapping?: RoleMapping }) {
   const [gamma, setGamma] = useState(2.2);
-  const a = schemeToAnsi(scheme);
-  const bg = applyGamma(scheme.base00, gamma);
+  const a = schemeToAnsi(scheme, mapping);
+  const bg = applyGamma(scheme[mapping.bg], gamma);
 
   return (
     <div className="border border-surface-high overflow-hidden flex flex-col" style={{ borderColor: scheme.base02 }}>
@@ -76,7 +76,7 @@ export default function TerminalPreview({ scheme }: { scheme: ColorScheme }) {
         <div style={{ color: a.green }}>[00:00:01] 16/16 OK</div>
         <div className="flex items-center gap-0.5 mt-1">
           {prompt(a)}
-          <span className="inline-block w-2 h-4 terminal-cursor" style={{ background: scheme.base0D }} />
+          <span className="inline-block w-2 h-4 terminal-cursor" style={{ background: scheme[mapping.blue] }} />
         </div>
       </div>
 

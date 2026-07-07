@@ -1,4 +1,4 @@
-import { ColorScheme } from "./types";
+import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING } from "./types";
 import { adjustBrightnessForAnsi } from "./color";
 
 export interface AnsiColors {
@@ -20,24 +20,24 @@ export interface AnsiColors {
   brightWhite: string;
 }
 
-export function schemeToAnsi(s: ColorScheme): AnsiColors {
+export function schemeToAnsi(s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_MAPPING): AnsiColors {
   return {
-    black: s.base00,
-    red: s.base08,
-    green: s.base0B,
-    yellow: s.base0A,
-    blue: s.base0D,
-    magenta: s.base0E,
-    cyan: s.base0C,
-    white: s.base05,
-    brightBlack: adjustBrightnessForAnsi(s.base03, true),
-    brightRed: adjustBrightnessForAnsi(s.base08, true),
-    brightGreen: adjustBrightnessForAnsi(s.base0B, true),
-    brightYellow: adjustBrightnessForAnsi(s.base0A, true),
-    brightBlue: adjustBrightnessForAnsi(s.base0D, true),
-    brightMagenta: adjustBrightnessForAnsi(s.base0E, true),
-    brightCyan: adjustBrightnessForAnsi(s.base0C, true),
-    brightWhite: adjustBrightnessForAnsi(s.base06, true),
+    black: s[mapping.bg],
+    red: s[mapping.red],
+    green: s[mapping.green],
+    yellow: s[mapping.yellow],
+    blue: s[mapping.blue],
+    magenta: s[mapping.magenta],
+    cyan: s[mapping.cyan],
+    white: s[mapping.fg],
+    brightBlack: adjustBrightnessForAnsi(s[mapping.muted], true),
+    brightRed: adjustBrightnessForAnsi(s[mapping.red], true),
+    brightGreen: adjustBrightnessForAnsi(s[mapping.green], true),
+    brightYellow: adjustBrightnessForAnsi(s[mapping.yellow], true),
+    brightBlue: adjustBrightnessForAnsi(s[mapping.blue], true),
+    brightMagenta: adjustBrightnessForAnsi(s[mapping.magenta], true),
+    brightCyan: adjustBrightnessForAnsi(s[mapping.cyan], true),
+    brightWhite: adjustBrightnessForAnsi(s[mapping.lightFg], true),
   };
 }
 
@@ -56,20 +56,20 @@ export interface GtkColors {
   shadow: string;
 }
 
-export function schemeToGtk(s: ColorScheme): GtkColors {
+export function schemeToGtk(s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_MAPPING): GtkColors {
   return {
-    bg: s.base00,
-    fg: s.base05,
-    base: s.base01,
-    text: s.base05,
-    selectedBg: s.base0D,
-    selectedFg: s.base07,
-    tooltipBg: s.base02,
-    tooltipFg: s.base05,
-    buttonBg: s.base02,
-    buttonFg: s.base05,
-    border: s.base03,
-    shadow: s.base00,
+    bg: s[mapping.bg],
+    fg: s[mapping.fg],
+    base: s[mapping.container],
+    text: s[mapping.fg],
+    selectedBg: s[mapping.blue],
+    selectedFg: s[mapping.lightBg],
+    tooltipBg: s[mapping.input],
+    tooltipFg: s[mapping.fg],
+    buttonBg: s[mapping.input],
+    buttonFg: s[mapping.fg],
+    border: s[mapping.muted],
+    shadow: s[mapping.bg],
   };
 }
 
@@ -87,18 +87,18 @@ export interface QtColors {
   disabled: string;
 }
 
-export function schemeToQt(s: ColorScheme): QtColors {
+export function schemeToQt(s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_MAPPING): QtColors {
   return {
-    window: s.base00,
-    windowText: s.base05,
-    base: s.base01,
-    text: s.base05,
-    button: s.base02,
-    buttonText: s.base05,
-    highlight: s.base0D,
-    highlightedText: s.base07,
-    tooltipBase: s.base02,
-    tooltipText: s.base05,
-    disabled: s.base03,
+    window: s[mapping.bg],
+    windowText: s[mapping.fg],
+    base: s[mapping.container],
+    text: s[mapping.fg],
+    button: s[mapping.input],
+    buttonText: s[mapping.fg],
+    highlight: s[mapping.blue],
+    highlightedText: s[mapping.lightBg],
+    tooltipBase: s[mapping.input],
+    tooltipText: s[mapping.fg],
+    disabled: s[mapping.muted],
   };
 }

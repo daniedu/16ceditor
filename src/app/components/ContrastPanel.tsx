@@ -1,20 +1,20 @@
 "use client";
 
-import { ColorScheme, BaseKey } from "@/src/lib/types";
+import { ColorScheme, RoleMapping, SemanticRole, DEFAULT_ROLE_MAPPING } from "@/src/lib/types";
 import { contrastRatio, wcagLevel } from "@/src/lib/color";
 
-const pairs: { bg: BaseKey; fg: BaseKey; label: string }[] = [
-  { bg: "base00", fg: "base05", label: "BG / FG" },
-  { bg: "base01", fg: "base05", label: "Container / FG" },
-  { bg: "base02", fg: "base05", label: "Input / FG" },
-  { bg: "base00", fg: "base0D", label: "BG / Blue" },
-  { bg: "base00", fg: "base0A", label: "BG / Yellow" },
-  { bg: "base00", fg: "base0B", label: "BG / Green" },
-  { bg: "base00", fg: "base08", label: "BG / Red" },
-  { bg: "base01", fg: "base04", label: "Container / Dark FG" },
+const pairs: { bg: SemanticRole; fg: SemanticRole; label: string }[] = [
+  { bg: "bg", fg: "fg", label: "BG / FG" },
+  { bg: "container", fg: "fg", label: "Container / FG" },
+  { bg: "input", fg: "fg", label: "Input / FG" },
+  { bg: "bg", fg: "blue", label: "BG / Blue" },
+  { bg: "bg", fg: "yellow", label: "BG / Yellow" },
+  { bg: "bg", fg: "green", label: "BG / Green" },
+  { bg: "bg", fg: "red", label: "BG / Red" },
+  { bg: "container", fg: "darkFg", label: "Container / Dark FG" },
 ];
 
-export default function ContrastPanel({ scheme }: { scheme: ColorScheme }) {
+export default function ContrastPanel({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme: ColorScheme; mapping?: RoleMapping }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
@@ -24,8 +24,8 @@ export default function ContrastPanel({ scheme }: { scheme: ColorScheme }) {
 
       <div className="space-y-1">
         {pairs.map((p) => {
-          const bg = scheme[p.bg];
-          const fg = scheme[p.fg];
+          const bg = scheme[mapping[p.bg]];
+          const fg = scheme[mapping[p.fg]];
           const ratio = contrastRatio(bg, fg);
           const level = wcagLevel(ratio);
 
