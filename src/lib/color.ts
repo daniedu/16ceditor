@@ -277,6 +277,101 @@ export function applyGamma(hex: string, gamma: number): string {
   return rgbToHex(correct(r), correct(g), correct(b));
 }
 
+// -- Color Harmony Helpers --
+
+export function complementary(hex: string): string {
+  const hsl = hexToHsl(hex);
+  return hslToHex((hsl.h + 180) % 360, hsl.s, hsl.l);
+}
+
+export function triadic(hex: string): [string, string, string] {
+  const hsl = hexToHsl(hex);
+  return [
+    hex,
+    hslToHex((hsl.h + 120) % 360, hsl.s, hsl.l),
+    hslToHex((hsl.h + 240) % 360, hsl.s, hsl.l),
+  ];
+}
+
+export function analogous(hex: string, count: number = 5): string[] {
+  const hsl = hexToHsl(hex);
+  const step = 30;
+  const start = hsl.h - (step * Math.floor((count - 1) / 2));
+  const result: string[] = [];
+  for (let i = 0; i < count; i++) {
+    result.push(hslToHex((start + i * step + 360) % 360, hsl.s, hsl.l));
+  }
+  return result;
+}
+
+export function splitComplementary(hex: string): [string, string, string] {
+  const hsl = hexToHsl(hex);
+  return [
+    hex,
+    hslToHex((hsl.h + 150) % 360, hsl.s, hsl.l),
+    hslToHex((hsl.h + 210) % 360, hsl.s, hsl.l),
+  ];
+}
+
+export function tetradic(hex: string): [string, string, string, string] {
+  const hsl = hexToHsl(hex);
+  return [
+    hex,
+    hslToHex((hsl.h + 90) % 360, hsl.s, hsl.l),
+    hslToHex((hsl.h + 180) % 360, hsl.s, hsl.l),
+    hslToHex((hsl.h + 270) % 360, hsl.s, hsl.l),
+  ];
+}
+
+export function square(hex: string): [string, string, string, string] {
+  const hsl = hexToHsl(hex);
+  return [
+    hex,
+    hslToHex((hsl.h + 90) % 360, hsl.s, hsl.l),
+    hslToHex((hsl.h + 180) % 360, hsl.s, hsl.l),
+    hslToHex((hsl.h + 270) % 360, hsl.s, hsl.l),
+  ];
+}
+
+export function shadeVariants(hex: string): string[] {
+  const hsl = hexToHsl(hex);
+  const variants: string[] = [];
+  for (let i = 5; i <= 95; i += 10) {
+    variants.push(hslToHex(hsl.h, hsl.s, i));
+  }
+  return variants;
+}
+
+export function toneVariants(hex: string): string[] {
+  const hsl = hexToHsl(hex);
+  const variants: string[] = [];
+  for (let s = 100; s >= 10; s -= 10) {
+    variants.push(hslToHex(hsl.h, s, hsl.l));
+  }
+  return variants;
+}
+
+export function bestContrastBackground(fg: string, bgOptions: string[]): string {
+  let best = bgOptions[0];
+  let bestRatio = 0;
+  for (const bg of bgOptions) {
+    const r = contrastRatio(bg, fg);
+    if (r > bestRatio) { bestRatio = r; best = bg; }
+  }
+  return best;
+}
+
+export function readableOn(hex: string): { bg: string; fg: string } {
+  const l = relativeLuminance(hex);
+  const hsl = hexToHsl(hex);
+  if (l > 0.5) {
+    const bg = hslToHex(hsl.h, hsl.s * 0.3, 8);
+    return { bg, fg: hex };
+  }
+  const bg = hslToHex(hsl.h, hsl.s * 0.3, 95);
+  return { bg, fg: hex };
+}
+
 // -- Color Blindness Simulation --
 
 export type ColorBlindnessType = "protanopia" | "deuteranopia" | "tritanopia" | "achromatopsia";

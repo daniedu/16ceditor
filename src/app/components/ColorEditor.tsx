@@ -4,8 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { HexColorPicker } from "react-colorful";
 import { ColorScheme, BaseKey, HexColor, RoleMapping, DEFAULT_ROLE_MAPPING, ROLE_LABELS } from "@/src/lib/types";
 import { SWATCH_GROUPS } from "@/src/lib/presets";
-import { hexToHsl, hslToHex, hexToRgb, rgbToHex } from "@/src/lib/color";
-import { Undo2, Redo2, Pipette, Crosshair, SlidersHorizontal, Palette, Hash } from "lucide-react";
+import { hexToHsl, hslToHex, hexToRgb, rgbToHex, complementary, triadic, splitComplementary, analogous, shadeVariants, toneVariants, readableOn, contrastRatio } from "@/src/lib/color";
+import { Undo2, Redo2, Pipette, Crosshair, Palette, Sparkles } from "lucide-react";
 
 function luminance(hex: string): number {
   return hexToHsl(hex).l;
@@ -100,6 +100,7 @@ export default function ColorEditor({
                   onToggle={() => setOpenPicker(openPicker === key ? null : key)}
                   onChange={(c) => onColorChange(key, c)}
                   onPick={() => onPickerTargetChange?.(isPicking ? null : key)}
+                  scheme={scheme}
                 />
               );
             })}
@@ -111,14 +112,14 @@ export default function ColorEditor({
   );
 }
 
-type PickerMode = "picker" | "hsl" | "rgb";
+type PickerMode = "picker" | "hsl" | "rgb" | "circle" | "harmony" | "suggest";
 
 function SwatchCard({
-  hex, label, roleLabels, textColor, isOpen, isPicking, onToggle, onChange, onPick,
+  hex, label, roleLabels, textColor, isOpen, isPicking, onToggle, onChange, onPick, scheme,
 }: {
   hex: string; label: string; roleLabels: string[]; textColor: string;
   isOpen: boolean; isPicking: boolean; onToggle: () => void; onChange: (c: string) => void;
-  onPick: () => void;
+  onPick: () => void; scheme: ColorScheme;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -171,6 +172,24 @@ function SwatchCard({
     setInputHex(c);
   }
 
+  function selectColor(c: string) {
+    onChange(c);
+    setInputHex(c);
+  }
+
+  const harmonyResults = [
+    { label: "Analogous", colors: analogous(hex, 5) },
+    { label: "Complementary", colors: [hex, complementary(hex)] },
+    { label: "Split Comp.", colors: [...splitComplementary(hex)] },
+    { label: "Triadic", colors: [...triadic(hex)] },
+    { label: "Shades", colors: shadeVariants(hex).filter((_, i) => i % 2 === 0).slice(0, 5) },
+  ];
+
+  const suggestions = [
+    ...Object.entries(scheme).filter(([, v]) => v !== hex).slice(0, 4).map(([, v]) => v),
+    ...companionable(hex),
+  ].slice(0, 9);
+
   return (
     <div
       ref={ref}
@@ -216,19 +235,19 @@ function SwatchCard({
           className="fixed z-50"
           style={{ top: popoverPos.top, left: popoverPos.left }}
         >
-          <div className="bg-surface border border-surface-high p-2 shadow-lg" style={{ width: 220 }}>
-            <div className="flex mb-1.5 border-b border-surface-high pb-1">
-              {(["picker", "hsl", "rgb"] as const).map((mode) => (
+          <div className="bg-surface border border-surface-high p-2 shadow-lg" style={{ width: 240 }}>
+            <div className="flex flex-wrap mb-1.5 border-b border-surface-high pb-1">
+              {(["picker","circle","hsl","rgb","harmony","suggest"] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setPickerMode(mode)}
-                  className="flex-1 text-[11px] py-1 font-medium transition-all"
+                  className="flex-1 text-[10px] py-1 font-medium transition-all"
                   style={{
                     color: pickerMode === mode ? "#e4e2e1" : "#93927b",
                     borderBottom: pickerMode === mode ? "2px solid" : "2px solid transparent",
                   }}
                 >
-                  {mode === "picker" ? "Picker" : mode === "hsl" ? "HSL" : "RGB"}
+                  {mode === "picker" ? "Pick" : mode === "circle" ? "Wheel" : mode === "harmony" ? "Harmony" : mode === "suggest" ? "Suggest" : mode.toUpperCase()}
                 </button>
               ))}
             </div>
@@ -237,9 +256,13 @@ function SwatchCard({
               <HexColorPicker color={hex} onChange={(c) => { onChange(c); setInputHex(c); }} />
             )}
 
+            {pickerMode === "circle" && (
+              <HsvRingPicker hex={hex} onChange={(c) => { onChange(c); setInputHex(c); }} />
+            )}
+
             {pickerMode === "hsl" && (
               <div className="space-y-2 px-0.5">
-                <SliderInput label="H" value={Math.round(hsl.h)} min={0} max={360} onChange={(v) => handleHsl(v, hsl.s, hsl.l)} />
+                <SliderInput label="H" value={Math.round(hsl.h)} min={0} max={360} onChange={(v) => handleHsl(v, hsl.s, hsl.l)} colorful />
                 <SliderInput label="S" value={Math.round(hsl.s)} min={0} max={100} onChange={(v) => handleHsl(hsl.h, v, hsl.l)} />
                 <SliderInput label="L" value={Math.round(hsl.l)} min={0} max={100} onChange={(v) => handleHsl(hsl.h, hsl.s, v)} />
               </div>
@@ -247,9 +270,71 @@ function SwatchCard({
 
             {pickerMode === "rgb" && (
               <div className="space-y-2 px-0.5">
-                <SliderInput label="R" value={r} min={0} max={255} onChange={(v) => handleRgb(v, g, b)} />
-                <SliderInput label="G" value={g} min={0} max={255} onChange={(v) => handleRgb(r, v, b)} />
-                <SliderInput label="B" value={b} min={0} max={255} onChange={(v) => handleRgb(r, g, v)} />
+                <SliderInput label="R" value={r} min={0} max={255} onChange={(v) => handleRgb(v, g, b)} colorful />
+                <SliderInput label="G" value={g} min={0} max={255} onChange={(v) => handleRgb(r, v, b)} colorful />
+                <SliderInput label="B" value={b} min={0} max={255} onChange={(v) => handleRgb(r, g, v)} colorful />
+              </div>
+            )}
+
+            {pickerMode === "harmony" && (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {harmonyResults.map((group) => (
+                  <div key={group.label}>
+                    <div className="text-[10px] font-semibold text-outline mb-0.5">{group.label}</div>
+                    <div className="flex gap-1 flex-wrap">
+                      {group.colors.map((c, i) => (
+                        <button
+                          key={i}
+                          onClick={() => selectColor(c)}
+                          className="w-6 h-6 border border-outline-variant hover:scale-110 transition-transform shrink-0"
+                          style={{ background: c, borderRadius: "50%" }}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {pickerMode === "suggest" && (
+              <div>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {suggestions.map((c, i) => {
+                    const bgHsl = hexToHsl(c);
+                    const diff = Math.abs(bgHsl.h - hsl.h);
+                    const isSimilar = diff < 20 || diff > 340;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => selectColor(c)}
+                        className="flex flex-col items-center gap-0.5 p-1 border rounded transition-all hover:scale-105"
+                        style={{
+                          borderColor: "#353535",
+                          background: c === hex ? `${c}33` : "transparent",
+                        }}
+                      >
+                        <span
+                          className="w-7 h-7 border border-outline-variant"
+                          style={{ background: c, borderRadius: "50%" }}
+                        />
+                        <span className="text-[8px] font-mono text-outline">{c}</span>
+                        {isSimilar && <span className="text-[8px] text-[#d5c59e]">match</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 pt-1.5 border-t border-surface-high">
+                  <div className="text-[10px] font-semibold text-outline mb-1">How it reads</div>
+                  <div className="flex items-center gap-2 px-2 py-1 border border-surface-high rounded">
+                    <span className="w-4 h-4 border border-outline-variant shrink-0" style={{ background: readableOn(hex).bg, borderRadius: "50%" }} />
+                    <span className="w-4 h-4 border border-outline-variant shrink-0" style={{ background: readableOn(hex).fg, borderRadius: "50%" }} />
+                    <span className="text-[10px] text-outline">{readableOn(hex).bg} / {hex}</span>
+                    <span className="text-[10px] font-medium ml-auto" style={{ color: "#b4d8ca" }}>
+                      {contrastRatio(readableOn(hex).bg, readableOn(hex).fg).toFixed(1)}:1
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -272,12 +357,85 @@ function SwatchCard({
   );
 }
 
-function SliderInput({ label, value, min, max, onChange }: {
-  label: string; value: number; min: number; max: number; onChange: (v: number) => void;
+function companionable(hex: string): string[] {
+  const hsl = hexToHsl(hex);
+  const candidates: string[] = [];
+  for (let ao = 0; ao < 360; ao += 30) {
+    candidates.push(hslToHex((hsl.h + ao) % 360, Math.max(10, hsl.s - 20), Math.min(90, hsl.l + (hsl.l > 50 ? -20 : 20))));
+  }
+  return candidates.sort((a, b) => contrastRatio(b, hex) - contrastRatio(a, hex)).slice(0, 6);
+}
+
+function HsvRingPicker({ hex, onChange }: { hex: string; onChange: (c: string) => void }) {
+  const hsl = hexToHsl(hex);
+  const size = 160;
+  const cx = size / 2, cy = size / 2, outerR = size / 2 - 2, innerR = outerR * 0.3;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d")!;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.scale(dpr, dpr);
+    for (let a = 0; a < 360; a++) {
+      const rad = ((a - 90) * Math.PI) / 180;
+      ctx.beginPath();
+      ctx.arc(cx + innerR * Math.cos(rad), cy + innerR * Math.sin(rad), 3, 0, Math.PI * 2);
+      ctx.fillStyle = `hsl(${a}, 70%, 55%)`;
+      ctx.fill();
+    }
+    for (let r = 0; r < innerR; r++) {
+      const sat = (r / innerR) * 100;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = `hsl(${hsl.h}, ${sat}%, ${hsl.l}%)`;
+      ctx.fill();
+    }
+    {
+      const rad = ((hsl.h - 90) * Math.PI) / 180;
+      ctx.beginPath();
+      ctx.arc(cx + innerR * 0.85 * Math.cos(rad), cy + innerR * 0.85 * Math.sin(rad), 5, 0, Math.PI * 2);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }, [size, hsl.h, hsl.s, hsl.l]);
+
+  function handlePick(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const dx = e.clientX - rect.left - cx, dy = e.clientY - rect.top - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > outerR) return;
+    if (dist <= innerR) {
+      onChange(hslToHex(hsl.h, (dist / innerR) * 100, hsl.l));
+      return;
+    }
+    let angle = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+    if (angle < 0) angle += 360;
+    onChange(hslToHex(angle, hsl.s, hsl.l));
+  }
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="cursor-crosshair mx-auto"
+      style={{ width: size, height: size }}
+      onClick={handlePick}
+    />
+  );
+}
+
+function SliderInput({ label, value, min, max, onChange, colorful }: {
+  label: string; value: number; min: number; max: number; onChange: (v: number) => void; colorful?: boolean;
 }) {
   return (
     <div className="flex items-center gap-2 text-[13px]">
-      <span className="text-outline w-3 shrink-0">{label}</span>
+      {label && <span className="text-outline w-3 shrink-0">{label}</span>}
       <input
         type="range"
         min={min}
