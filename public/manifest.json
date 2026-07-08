@@ -2,7 +2,7 @@
   "name": "Stylix Architect - 16-Color Theme Studio",
   "short_name": "Stylix",
   "description": "Design, preview, and export Base16 colour schemes for terminal, GTK, and Qt environments",
-  "start_url": "/16ceditor/",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#131313",
   "theme_color": "#000000",

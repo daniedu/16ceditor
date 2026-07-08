@@ -14,9 +14,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#131313" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
+        <link rel="apple-touch-icon" href={`${process.env.NODE_ENV === "production" ? "/16ceditor" : ""}/icon-192.png`} />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("${process.env.NODE_ENV === "production" ? "/16ceditor" : ""}/sw.js");
+}
+            `,
+          }}
+        />
+      </body>
     </html>
   );
 }
