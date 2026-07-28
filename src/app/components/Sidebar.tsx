@@ -1,7 +1,7 @@
 "use client";
 
 import { ColorScheme, ViewTab, BaseKey } from "@/src/lib/types";
-import { Palette, Eye, BarChart3, Sparkles, Plus, Copy, Download, Trash2, Upload, X, LayoutGrid } from "lucide-react";
+import { Palette, Eye, BarChart3, Sparkles, Settings, Plus, Copy, Download, Trash2, Upload, X, LayoutGrid } from "lucide-react";
 import { useMediaQuery } from "@/src/lib/useMediaQuery";
 import Link from "next/link";
 
@@ -29,6 +29,7 @@ const tabs: { id: ViewTab; label: string; icon: React.ComponentType<{ className?
   { id: "previews", label: "Previews", icon: Eye },
   { id: "analysis", label: "Analysis", icon: BarChart3 },
   { id: "generate", label: "Generate", icon: Sparkles },
+  { id: "settings", label: "Settings", icon: Settings },
 ];
 
 export default function Sidebar({
@@ -173,6 +174,32 @@ export default function Sidebar({
             })}
           </div>
         </div>
+
+        <details className="border-t p-2 text-[11px] space-y-1 group" style={{ borderColor: scheme.base02, color: scheme.base04 }}>
+          <summary className="cursor-pointer font-semibold tracking-wider" style={{ color: scheme.base04 }}>
+            STYLIX MAP REFERENCE
+          </summary>
+          <div className="space-y-2 pt-1">
+            <p className="leading-relaxed" style={{ color: scheme.base03 }}>
+              Stylix generates Kitty themes from the
+              {' '}<a href="https://github.com/tinted-theming/tinted-kitty" target="_blank" rel="noreferrer" style={{ color: scheme.base0D }}>tinted-kitty</a>
+              {' '}<code className="text-[10px] px-0.5" style={{ background: scheme.base00, color: scheme.base04 }}>base16.mustache</code> template.
+            </p>
+            <div className="text-[10px] font-mono p-1 rounded" style={{ background: scheme.base00 }}>
+              <div className="flex items-center gap-1"><span className="w-3 text-right">0</span><span className="flex-1">base00  (bg)</span><span className="w-3 text-right">8</span><span>base02  (sel bg)</span></div>
+              <div className="flex items-center gap-1"><span className="w-3 text-right">1</span><span className="flex-1">base08  (red)</span><span className="w-3 text-right">9</span><span>base08  (red)</span></div>
+              <div className="flex items-center gap-1"><span className="w-3 text-right">2</span><span className="flex-1">base0B  (green)</span><span className="w-3 text-right">10</span><span>base0B  (green)</span></div>
+              <div className="flex items-center gap-1"><span className="w-3 text-right">3</span><span className="flex-1">base0A  (yellow)</span><span className="w-3 text-right">11</span><span>base0A  (yellow)</span></div>
+              <div className="flex items-center gap-1"><span className="w-3 text-right">4</span><span className="flex-1">base0D  (blue)</span><span className="w-3 text-right">12</span><span>base0D  (blue)</span></div>
+              <div className="flex items-center gap-1"><span className="w-3 text-right">5</span><span className="flex-1">base0E  (magenta)</span><span className="w-3 text-right">13</span><span>base0E  (magenta)</span></div>
+              <div className="flex items-center gap-1"><span className="w-3 text-right">6</span><span className="flex-1">base0C  (cyan)</span><span className="w-3 text-right">14</span><span>base0C  (cyan)</span></div>
+              <div className="flex items-center gap-1"><span className="w-3 text-right">7</span><span className="flex-1">base05  (fg)</span><span className="w-3 text-right">15</span><span>base07  (lt bg)</span></div>
+            </div>
+            <p className="leading-relaxed" style={{ color: scheme.base03 }}>
+              Bright colors 9–14 match their normal counterparts. Remaining Base16 keys occupy extended slots 16–21. Template params like <code className="text-[10px] px-0.5" style={{ background: scheme.base00, color: scheme.base04 }}>selection_bg</code> map to base03, <code className="text-[10px] px-0.5" style={{ background: scheme.base00, color: scheme.base04 }}>cursor</code> to base05. See Settings tab to customise.
+            </p>
+          </div>
+        </details>
 
         <div className="border-t p-2 space-y-1" style={{ borderColor: scheme.base02 }}>
           <Link

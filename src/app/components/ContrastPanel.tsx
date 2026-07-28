@@ -6,7 +6,7 @@ import { contrastRatio, wcagLevel } from "@/src/lib/color";
 const pairs: { bg: SemanticRole; fg: SemanticRole; label: string }[] = [
   { bg: "bg", fg: "fg", label: "BG / FG" },
   { bg: "container", fg: "fg", label: "Container / FG" },
-  { bg: "input", fg: "fg", label: "Input / FG" },
+  { bg: "scrollbar", fg: "fg", label: "Scrollbar / FG" },
   { bg: "bg", fg: "blue", label: "BG / Blue" },
   { bg: "bg", fg: "yellow", label: "BG / Yellow" },
   { bg: "bg", fg: "green", label: "BG / Green" },

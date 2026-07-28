@@ -112,14 +112,6 @@ export function toneDown(hex: string, amount: number): string {
   return hslToHex(hsl.h, Math.max(0, s), Math.max(0, Math.min(100, l)));
 }
 
-export function adjustBrightnessForAnsi(hex: string, isBright: boolean): string {
-  if (isBright) {
-    const hsl = hexToHsl(hex);
-    return hslToHex(hsl.h, Math.max(0, hsl.s - 10), Math.min(100, hsl.l + 25));
-  }
-  return hex;
-}
-
 export function pickColorFromImage(
   img: HTMLImageElement,
   clientX: number,

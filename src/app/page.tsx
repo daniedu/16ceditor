@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { ColorScheme, ViewTab, BaseKey, RoleMapping, DEFAULT_ROLE_MAPPING } from "@/src/lib/types";
+import { ColorScheme, ViewTab, BaseKey, RoleMapping, DEFAULT_ROLE_MAPPING, ColorSettings, DEFAULT_COLOR_SETTINGS } from "@/src/lib/types";
 import { presets, createEmptyScheme } from "@/src/lib/presets";
 import { usePersistedSchemes } from "@/src/lib/usePersistedSchemes";
 import { useUndoRedo } from "@/src/lib/useUndoRedo";
@@ -15,10 +15,11 @@ import GtkPreview from "./components/GtkPreview";
 import QtPreview from "./components/QtPreview";
 import CodePreview from "./components/CodePreview";
 import GeneratePanel from "./components/GeneratePanel";
+import SettingsPanel from "./components/SettingsPanel";
 import ImportExport from "./components/ImportExport";
 import ImagePicker from "./components/ImagePicker";
 import RoleMappingEditor from "./components/RoleMappingEditor";
-import { Pipette, Menu, Palette, Eye, BarChart3, Sparkles, ChevronLeft } from "lucide-react";
+import { Pipette, Menu, Palette, Eye, BarChart3, Sparkles, Settings, ChevronLeft } from "lucide-react";
 
 function nextSlug(schemes: ColorScheme[]): string {
   return `custom-${schemes.length + 1}`;
@@ -29,17 +30,27 @@ export default function Home() {
   const [activeSlug, setActiveSlug] = useState(presets[0].slug || "gruvbox-dark");
   const [activeTab, setActiveTab] = useState<ViewTab>("previews");
   const [roleMapping, setRoleMapping] = useState<RoleMapping>(DEFAULT_ROLE_MAPPING);
+  const [colorSettings, setColorSettings] = useState<ColorSettings>(DEFAULT_COLOR_SETTINGS);
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("stylix-role-mapping");
       if (saved) setRoleMapping(JSON.parse(saved) as RoleMapping);
     } catch {}
+    try {
+      const saved = localStorage.getItem("stylix-color-settings");
+      if (saved) setColorSettings(JSON.parse(saved) as ColorSettings);
+    } catch {}
   }, []);
 
   const handleMappingChange = useCallback((m: RoleMapping) => {
     setRoleMapping(m);
     try { localStorage.setItem("stylix-role-mapping", JSON.stringify(m)); } catch {}
+  }, []);
+
+  const handleColorSettingsChange = useCallback((s: ColorSettings) => {
+    setColorSettings(s);
+    try { localStorage.setItem("stylix-color-settings", JSON.stringify(s)); } catch {}
   }, []);
   const [modalMode, setModalMode] = useState<"import" | "export" | null>(null);
   const [pickerTarget, setPickerTarget] = useState<BaseKey | null>(null);
@@ -300,6 +311,7 @@ export default function Home() {
             {!isPhone && activeTab === "editor" && "Palette Editor"}
             {!isPhone && activeTab === "analysis" && "Contrast Analysis"}
             {!isPhone && activeTab === "generate" && "Generate Theme"}
+            {!isPhone && activeTab === "settings" && "Colour Settings"}
           </span>
           <span
             className="text-[12px] px-1.5 py-0.5"
@@ -334,7 +346,7 @@ export default function Home() {
             {activeTab === "previews" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {sourceImage}
-                <TerminalPreview scheme={activeScheme} mapping={roleMapping} />
+                <TerminalPreview scheme={activeScheme} ansiMap={colorSettings.terminal.ansi} appearance={colorSettings.terminal.appearance} />
                 <GtkPreview scheme={activeScheme} mapping={roleMapping} />
                 <QtPreview scheme={activeScheme} mapping={roleMapping} />
                 <CodePreview scheme={activeScheme} mapping={roleMapping} />
@@ -367,6 +379,12 @@ export default function Home() {
             {activeTab === "generate" && (
               <div className="max-w-2xl">
                 <GeneratePanel scheme={activeScheme} onSave={handleSave} />
+              </div>
+            )}
+
+            {activeTab === "settings" && (
+              <div className="max-w-3xl">
+                <SettingsPanel scheme={activeScheme} settings={colorSettings} onChange={handleColorSettingsChange} />
               </div>
             )}
           </div>
@@ -413,8 +431,8 @@ export default function Home() {
                 onOpenPicker={handleOpenPicker}
                 mapping={roleMapping}
               />
-              <RoleMappingEditor mapping={roleMapping} onChange={handleMappingChange} />
               <ContrastPanel scheme={activeScheme} mapping={roleMapping} />
+              <RoleMappingEditor mapping={roleMapping} onChange={handleMappingChange} />
             </div>
           )}
 
@@ -435,8 +453,8 @@ export default function Home() {
               onOpenPicker={handleOpenPicker}
               mapping={roleMapping}
             />
-            <RoleMappingEditor mapping={roleMapping} onChange={handleMappingChange} />
             <ContrastPanel scheme={activeScheme} mapping={roleMapping} />
+            <RoleMappingEditor mapping={roleMapping} onChange={handleMappingChange} />
           </div>
         </div>
 
@@ -450,6 +468,7 @@ export default function Home() {
               { id: "previews" as ViewTab, icon: Eye, label: "Previews", mobileId: "previews" as const },
               { id: "analysis" as ViewTab, icon: BarChart3, label: "Analysis", mobileId: "tools" as const },
               { id: "generate" as ViewTab, icon: Sparkles, label: "Generate", mobileId: "tools" as const },
+              { id: "settings" as ViewTab, icon: Settings, label: "Settings", mobileId: "tools" as const },
             ].map((t) => {
               const isActive = activeTab === t.id;
               return (

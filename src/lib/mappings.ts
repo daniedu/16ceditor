@@ -1,5 +1,4 @@
-import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING } from "./types";
-import { adjustBrightnessForAnsi } from "./color";
+import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING, AnsiSlotMap, DEFAULT_TERMINAL_ANSI } from "./types";
 
 export interface AnsiColors {
   black: string;
@@ -20,56 +19,92 @@ export interface AnsiColors {
   brightWhite: string;
 }
 
-export function schemeToAnsi(s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_MAPPING): AnsiColors {
-  return {
-    black: s[mapping.bg],
-    red: s[mapping.red],
-    green: s[mapping.green],
-    yellow: s[mapping.yellow],
-    blue: s[mapping.blue],
-    magenta: s[mapping.magenta],
-    cyan: s[mapping.cyan],
-    white: s[mapping.fg],
-    brightBlack: adjustBrightnessForAnsi(s[mapping.muted], true),
-    brightRed: adjustBrightnessForAnsi(s[mapping.red], true),
-    brightGreen: adjustBrightnessForAnsi(s[mapping.green], true),
-    brightYellow: adjustBrightnessForAnsi(s[mapping.yellow], true),
-    brightBlue: adjustBrightnessForAnsi(s[mapping.blue], true),
-    brightMagenta: adjustBrightnessForAnsi(s[mapping.magenta], true),
-    brightCyan: adjustBrightnessForAnsi(s[mapping.cyan], true),
-    brightWhite: adjustBrightnessForAnsi(s[mapping.lightFg], true),
-  };
+const ANSI_TO_COLOR: [keyof AnsiColors, keyof AnsiSlotMap][] = [
+  ["black", "color0"],
+  ["red", "color1"],
+  ["green", "color2"],
+  ["yellow", "color3"],
+  ["blue", "color4"],
+  ["magenta", "color5"],
+  ["cyan", "color6"],
+  ["white", "color7"],
+  ["brightBlack", "color8"],
+  ["brightRed", "color9"],
+  ["brightGreen", "color10"],
+  ["brightYellow", "color11"],
+  ["brightBlue", "color12"],
+  ["brightMagenta", "color13"],
+  ["brightCyan", "color14"],
+  ["brightWhite", "color15"],
+];
+
+export function schemeToAnsi(s: ColorScheme, ansiMap: AnsiSlotMap = DEFAULT_TERMINAL_ANSI): AnsiColors {
+  const result = {} as AnsiColors;
+  for (const [colorKey, slot] of ANSI_TO_COLOR) {
+    result[colorKey] = s[ansiMap[slot]];
+  }
+  return result;
+}
+
+export type ConsoleColors = AnsiColors;
+
+export function schemeToConsole(s: ColorScheme, ansiMap: AnsiSlotMap): ConsoleColors {
+  return schemeToAnsi(s, ansiMap);
 }
 
 export interface GtkColors {
-  bg: string;
-  fg: string;
-  base: string;
-  text: string;
-  selectedBg: string;
-  selectedFg: string;
-  tooltipBg: string;
-  tooltipFg: string;
-  buttonBg: string;
-  buttonFg: string;
+  windowBg: string;
+  windowFg: string;
+  viewBg: string;
+  viewFg: string;
+  headerbarBg: string;
+  headerbarFg: string;
+  sidebarBg: string;
+  sidebarFg: string;
+  cardBg: string;
+  cardFg: string;
+  popoverBg: string;
+  popoverFg: string;
+  accent: string;
+  accentFg: string;
+  destructive: string;
+  destructiveFg: string;
+  success: string;
+  successFg: string;
+  warning: string;
+  warningFg: string;
+  error: string;
+  errorFg: string;
+  scrollbar: string;
   border: string;
-  shadow: string;
 }
 
 export function schemeToGtk(s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_MAPPING): GtkColors {
   return {
-    bg: s[mapping.bg],
-    fg: s[mapping.fg],
-    base: s[mapping.container],
-    text: s[mapping.fg],
-    selectedBg: s[mapping.blue],
-    selectedFg: s[mapping.lightBg],
-    tooltipBg: s[mapping.input],
-    tooltipFg: s[mapping.fg],
-    buttonBg: s[mapping.input],
-    buttonFg: s[mapping.fg],
+    windowBg: s[mapping.bg],
+    windowFg: s[mapping.fg],
+    viewBg: s[mapping.bg],
+    viewFg: s[mapping.fg],
+    headerbarBg: s[mapping.container],
+    headerbarFg: s[mapping.fg],
+    sidebarBg: s[mapping.container],
+    sidebarFg: s[mapping.fg],
+    cardBg: s[mapping.container],
+    cardFg: s[mapping.fg],
+    popoverBg: s[mapping.container],
+    popoverFg: s[mapping.fg],
+    accent: s[mapping.blue],
+    accentFg: s[mapping.bg],
+    destructive: s[mapping.red],
+    destructiveFg: s[mapping.bg],
+    success: s[mapping.green],
+    successFg: s[mapping.bg],
+    warning: s[mapping.magenta],
+    warningFg: s[mapping.bg],
+    error: s[mapping.red],
+    errorFg: s[mapping.bg],
+    scrollbar: s[mapping.scrollbar],
     border: s[mapping.muted],
-    shadow: s[mapping.bg],
   };
 }
 
@@ -89,16 +124,16 @@ export interface QtColors {
 
 export function schemeToQt(s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_MAPPING): QtColors {
   return {
-    window: s[mapping.bg],
+    window: s[mapping.container],
     windowText: s[mapping.fg],
-    base: s[mapping.container],
+    base: s[mapping.bg],
     text: s[mapping.fg],
-    button: s[mapping.input],
+    button: s[mapping.scrollbar],
     buttonText: s[mapping.fg],
-    highlight: s[mapping.blue],
-    highlightedText: s[mapping.lightBg],
-    tooltipBase: s[mapping.input],
+    highlight: s[mapping.magenta],
+    highlightedText: s[mapping.bg],
+    tooltipBase: s[mapping.bg],
     tooltipText: s[mapping.fg],
-    disabled: s[mapping.muted],
+    disabled: s[mapping.darkFg],
   };
 }

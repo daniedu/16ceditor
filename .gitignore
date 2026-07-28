@@ -16,5 +16,8 @@ out/
 # Dependencies
 node_modules/
 
+# Build artifacts
+tsconfig.tsbuildinfo
+
 # OS
 .DS_Store
