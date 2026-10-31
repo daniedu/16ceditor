@@ -93,6 +93,13 @@ export const presets: ColorScheme[] = [
     base08: "#ff7f7b", base09: "#ffbf70", base0A: "#ffd67c", base0B: "#beda78",
     base0C: "#70d0d0", base0D: "#90d0ff", base0E: "#f0a0e0", base0F: "#e0c090",
   },
+  {
+    name: "Snow", slug: "snow", author: "daniedu",
+    base00: "#1C1C1C", base01: "#2D2D2D", base02: "#5B5B5B", base03: "#787878",
+    base04: "#D0C8C0", base05: "#ECD1D1", base06: "#757B6B", base07: "#C0B8D9",
+    base08: "#F9D7D2", base09: "#FAD5EC", base0A: "#D7B2CF", base0B: "#9ED5D9",
+    base0C: "#D4D3E1", base0D: "#E7E6F2", base0E: "#A19FAB", base0F: "#95928F",
+  },
 ];
 
 export function createEmptyScheme(name: string): ColorScheme {

@@ -1,4 +1,5 @@
 import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING, AnsiSlotMap, DEFAULT_TERMINAL_ANSI } from "./types";
+import { hexToRgb } from "./color";
 
 export interface AnsiColors {
   black: string;
@@ -59,6 +60,7 @@ export interface GtkColors {
   viewFg: string;
   headerbarBg: string;
   headerbarFg: string;
+  headerbarBorder: string;
   sidebarBg: string;
   sidebarFg: string;
   cardBg: string;
@@ -75,23 +77,28 @@ export interface GtkColors {
   warningFg: string;
   error: string;
   errorFg: string;
+  scrollbarOutline: string;
   scrollbar: string;
   border: string;
+  shade: string;
 }
 
 export function schemeToGtk(s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_MAPPING): GtkColors {
+  const b01 = s[mapping.container];
+  const [r, g, b] = hexToRgb(b01);
   return {
     windowBg: s[mapping.bg],
     windowFg: s[mapping.fg],
     viewBg: s[mapping.bg],
     viewFg: s[mapping.fg],
-    headerbarBg: s[mapping.container],
+    headerbarBg: b01,
     headerbarFg: s[mapping.fg],
-    sidebarBg: s[mapping.container],
+    headerbarBorder: `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, 0.7)`,
+    sidebarBg: b01,
     sidebarFg: s[mapping.fg],
-    cardBg: s[mapping.container],
+    cardBg: b01,
     cardFg: s[mapping.fg],
-    popoverBg: s[mapping.container],
+    popoverBg: b01,
     popoverFg: s[mapping.fg],
     accent: s[mapping.blue],
     accentFg: s[mapping.bg],
@@ -103,8 +110,10 @@ export function schemeToGtk(s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_
     warningFg: s[mapping.bg],
     error: s[mapping.red],
     errorFg: s[mapping.bg],
+    scrollbarOutline: s[mapping.scrollbar],
     scrollbar: s[mapping.scrollbar],
     border: s[mapping.muted],
+    shade: "rgba(0, 0, 0, 0.07)",
   };
 }
 
@@ -117,6 +126,9 @@ export interface QtColors {
   buttonText: string;
   highlight: string;
   highlightedText: string;
+  inactiveHighlight: string;
+  link: string;
+  linkVisited: string;
   tooltipBase: string;
   tooltipText: string;
   disabled: string;
@@ -132,6 +144,9 @@ export function schemeToQt(s: ColorScheme, mapping: RoleMapping = DEFAULT_ROLE_M
     buttonText: s[mapping.fg],
     highlight: s[mapping.magenta],
     highlightedText: s[mapping.bg],
+    inactiveHighlight: s[mapping.muted],
+    link: s[mapping.blue],
+    linkVisited: s[mapping.magenta],
     tooltipBase: s[mapping.bg],
     tooltipText: s[mapping.fg],
     disabled: s[mapping.darkFg],
