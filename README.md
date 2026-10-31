@@ -1,7 +1,7 @@
 # 16 Colour Editor
 
 Design, preview, and export **Base16 colour schemes** for terminal, GTK, and Qt environments.  
-Upload an image, pick an algorithm (K-Means, Median Cut, Histogram, Octree) to extract a palette, then tweak each colour individually. Export to Alacritty, Xresources, GTK CSS, Qt stylesheets, KDE Konsole, Base16 JSON/YAML, or Terminal.sexy JSON.
+Upload an image, pick an algorithm to extract a palette, then tweak each colour individually. Export to Alacritty, Xresources, GTK CSS, Qt stylesheets, KDE Konsole, Base16 JSON/YAML, or Terminal.sexy JSON.
 
 Built for people who want full control over their terminal and desktop theme colours — import into [Stylix](https://github.com/danth/stylix) or your NixOS config directly.
 
@@ -9,11 +9,21 @@ Built for people who want full control over their terminal and desktop theme col
 
 - **16 Base16 colour swatches** — edit with hex input or a colour picker popover
 - **Undo/redo** per colour — history is per-swatch, survives scheme switches
-- **Image palette extraction** — upload an image, pick from 4 algorithms:
+- **Image palette extraction** — upload an image and pick from 16 algorithms (each ported from / inspired by its namesake tool):
   - *K-Means* — balanced clustering
   - *Median Cut* — fast, good for dominant colours
   - *Histogram Peak* — preserves actual image tones
   - *Octree Quantization* — clean quantisation
+  - *Monochrome / Vibrant / Muted / Dominant* — material-style themed subsets
+  - *High Contrast / Complementary* — accessibility-oriented
+  - *QuickTheme* — perceptual OKLab-based clustering
+  - *pywal (wal backend)* — ImageMagick-style `-unique-colors` emulation
+  - *pywal (colorz)* — k-means hue-ordered 6-colour palette
+  - *pywal (colorthief)* — 8-colour palette sorted by YIQ luminance
+  - *wallust kmeans* — Lab-space 16-colour clustering with ΔE-2000 dedup
+  - *wallust ansi* — HSV hue-range TTY palette (matches wallust's `ansi` scheme)
+- **Dark / Light polarity** — pywal & wallust backends adapt their contrast rules to the chosen style
+- **Hover inspection** — hover a colour row to highlight every element it paints across all previews (Stylix role check)
 - **Large image picker** — pan, zoom, pick any pixel colour straight from the image
 - **Saturation badges** — hover any swatch to see saturation % (green/yellow/red)
 - **Previews** — terminal ANSI, GTK, Qt, code syntax highlight
@@ -21,6 +31,20 @@ Built for people who want full control over their terminal and desktop theme col
 - **Export** — 8 formats, all with colour-highlighted hex values
 - **Import** — paste Base16 JSON or YAML
 - **Persistent** — schemes saved to `localStorage`; also bakes in as preset defaults
+
+## How other ricing tools generate palettes from a wallpaper
+
+These tools were used as references for the algorithms above — the site now ports their logic so you can reproduce their output without installing them:
+
+| Tool | Strategy | Ported here as |
+|---|---|---|
+| [pywal](https://github.com/dylanaraps/pywal) | ImageMagick quantise → 16 unique colours, then rules to darken/lighten bg/fg | `pywal` |
+| [pywal `colorz`](https://github.com/dylanaraps/pywal/blob/master/pywal/backends/colorz.py) | k-means in hue-ordered 6-colour palette | `pywal-colorz` |
+| [pywal `colorthief`](https://github.com/dylanaraps/pywal/blob/master/pywal/backends/colorthief.py) | colour thief 8-palette sorted by YIQ | `pywal-colorthief` |
+| [wallust](https://codeberg.org/explosion-mental/wallust) | `salience` (top contrast cluster), `kmeans` (Lab 16-colour), `ansi` (HSV TTY slot matching) | `wallust-kmeans`, `wallust-ansi` |
+| [wpgtk](https://github.com/deviantfero/wpgtk) | GUI wrapper around pywal; uses pywal's backends | — (use the pywal algorithms) |
+| [Chameleon](https://github.com/GideonWolfe/Chameleon) | shell wrapper around pywal's wal binary | — (use the pywal algorithms) |
+| [Stylix](https://github.com/danth/stylix) | consumes a Base16 scheme — see the site's role mappings which match Stylix defaults exactly | site previews apply colours the same way |
 
 ## Adding default schemes
 

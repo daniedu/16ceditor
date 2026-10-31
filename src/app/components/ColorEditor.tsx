@@ -27,6 +27,7 @@ export default function ColorEditor({
   pickerTarget,
   onPickerTargetChange,
   onOpenPicker,
+  onHoverColor,
   mapping = DEFAULT_ROLE_MAPPING,
 }: {
   scheme: ColorScheme;
@@ -38,6 +39,7 @@ export default function ColorEditor({
   pickerTarget?: BaseKey | null;
   onPickerTargetChange?: (k: BaseKey | null) => void;
   onOpenPicker?: () => void;
+  onHoverColor?: (key: BaseKey | null) => void;
   mapping?: RoleMapping;
 }) {
   const [openPicker, setOpenPicker] = useState<BaseKey | null>(null);
@@ -97,6 +99,7 @@ export default function ColorEditor({
                   textColor={textColor}
                   isOpen={openPicker === key}
                   isPicking={isPicking}
+                  onHover={onHoverColor}
                   onToggle={() => setOpenPicker(openPicker === key ? null : key)}
                   onChange={(c) => onColorChange(key, c)}
                   onPick={() => onPickerTargetChange?.(isPicking ? null : key)}
@@ -115,11 +118,11 @@ export default function ColorEditor({
 type PickerMode = "picker" | "hsl" | "rgb" | "circle" | "harmony" | "suggest";
 
 function SwatchCard({
-  hex, label, roleLabels, textColor, isOpen, isPicking, onToggle, onChange, onPick, scheme,
+  hex, label, roleLabels, textColor, isOpen, isPicking, onHover, onToggle, onChange, onPick, scheme,
 }: {
   hex: string; label: string; roleLabels: string[]; textColor: string;
   isOpen: boolean; isPicking: boolean; onToggle: () => void; onChange: (c: string) => void;
-  onPick: () => void; scheme: ColorScheme;
+  onPick: () => void; onHover?: (key: BaseKey | null) => void; scheme: ColorScheme;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -194,6 +197,8 @@ function SwatchCard({
     <div
       ref={ref}
       className="relative group"
+      onMouseEnter={onHover ? () => onHover(label as BaseKey) : undefined}
+      onMouseLeave={onHover ? () => onHover(null) : undefined}
       style={isPicking ? { outline: `2px solid ${hex}`, outlineOffset: 1, borderRadius: 4 } : undefined}
     >
       <button

@@ -5,8 +5,7 @@ import { ColorScheme, ViewTab, BaseKey, RoleMapping, DEFAULT_ROLE_MAPPING, Color
 import { presets, createEmptyScheme } from "@/src/lib/presets";
 import { usePersistedSchemes } from "@/src/lib/usePersistedSchemes";
 import { useUndoRedo } from "@/src/lib/useUndoRedo";
-import { pickColorFromImage } from "@/src/lib/color";
-import { useMediaQuery } from "@/src/lib/useMediaQuery";
+import { pickColorFromImage, hexToRgb } from "@/src/lib/color";import { useMediaQuery } from "@/src/lib/useMediaQuery";
 import Sidebar from "./components/Sidebar";
 import ColorEditor from "./components/ColorEditor";
 import ContrastPanel from "./components/ContrastPanel";
@@ -19,7 +18,7 @@ import SettingsPanel from "./components/SettingsPanel";
 import ImportExport from "./components/ImportExport";
 import ImagePicker from "./components/ImagePicker";
 import RoleMappingEditor from "./components/RoleMappingEditor";
-import { Pipette, Menu, Palette, Eye, BarChart3, Sparkles, Settings, ChevronLeft } from "lucide-react";
+import { Pipette, Menu, Palette, Eye, BarChart3, Sparkles, Settings, ChevronLeft, MousePointer2 } from "lucide-react";
 
 function nextSlug(schemes: ColorScheme[]): string {
   return `custom-${schemes.length + 1}`;
@@ -61,6 +60,8 @@ export default function Home() {
   const isMobile = useMediaQuery("(max-width: 1023px)");
   const isPhone = useMediaQuery("(max-width: 767px)");
   const [mobileTab, setMobileTab] = useState<"colors" | "previews" | "tools">("colors");
+  const [hoverKey, setHoverKey] = useState<BaseKey | null>(null);
+  const highlightedRef = useRef<{ el: HTMLElement; outline: string; outlineOffset: string }[]>([]);
 
   useEffect(() => {
     try {
@@ -76,6 +77,32 @@ export default function Home() {
 
   const FALLBACK_SCHEME = presets[0] || createEmptyScheme("Fallback");
   const activeScheme = schemes.find((s) => s.slug === activeSlug) || schemes[0] || FALLBACK_SCHEME;
+
+  useEffect(() => {
+    for (const item of highlightedRef.current) {
+      item.el.style.outline = item.outline;
+      item.el.style.outlineOffset = item.outlineOffset;
+    }
+    highlightedRef.current = [];
+    const main = mainRef.current;
+    if (!hoverKey || !main) return;
+    const hex = activeScheme[hoverKey];
+    const [r, g, b] = hexToRgb(hex);
+    const rgbStr = `rgb(${r}, ${g}, ${b})`;
+    const rgbaStr = `rgba(${r}, ${g}, ${b}`;
+    main.querySelectorAll<HTMLElement>("*").forEach((el) => {
+      const cs = getComputedStyle(el);
+      const isMatch =
+        cs.color === rgbStr ||
+        cs.backgroundColor === rgbStr ||
+        cs.backgroundColor.startsWith(rgbaStr);
+      if (isMatch) {
+        highlightedRef.current.push({ el, outline: el.style.outline, outlineOffset: el.style.outlineOffset });
+        el.style.outline = `2px solid ${hex}`;
+        el.style.outlineOffset = "1px";
+      }
+    });
+  }, [hoverKey, activeScheme]);
 
   const handleSelect = useCallback((s: ColorScheme) => {
     setActiveSlug(s.slug || FALLBACK_SCHEME.slug || "");
@@ -345,6 +372,26 @@ export default function Home() {
           <div ref={mainRef} className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4">
             {activeTab === "previews" && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div
+                  className="flex items-center gap-2 text-[12px] px-2 py-1.5 border lg:col-span-2"
+                  style={{ borderColor: base02, background: base01, color: base04 }}
+                >
+                  <MousePointer2 className="w-3.5 h-3.5 shrink-0" style={{ color: base0D }} />
+                  <span>
+                    Inspection mode: hover a colour row (Palette Editor) to highlight every element it paints in
+                    these previews — the same roles
+                    {" "}
+                    <a
+                      href="https://github.com/danth/stylix"
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ color: base0D, textDecoration: "underline" }}
+                    >
+                      Stylix
+                    </a>
+                    {" "}maps onto terminal/GTK/Qt targets.
+                  </span>
+                </div>
                 {sourceImage}
                 <TerminalPreview scheme={activeScheme} ansiMap={colorSettings.terminal.ansi} appearance={colorSettings.terminal.appearance} />
                 <GtkPreview scheme={activeScheme} mapping={roleMapping} />
@@ -365,6 +412,7 @@ export default function Home() {
                   pickerTarget={pickerTarget}
                   onPickerTargetChange={setPickerTarget}
                   onOpenPicker={handleOpenPicker}
+                  onHoverColor={setHoverKey}
                   mapping={roleMapping}
                 />
               </div>
@@ -429,6 +477,7 @@ export default function Home() {
                 pickerTarget={pickerTarget}
                 onPickerTargetChange={setPickerTarget}
                 onOpenPicker={handleOpenPicker}
+                onHoverColor={setHoverKey}
                 mapping={roleMapping}
               />
               <ContrastPanel scheme={activeScheme} mapping={roleMapping} />
@@ -451,6 +500,7 @@ export default function Home() {
               pickerTarget={pickerTarget}
               onPickerTargetChange={setPickerTarget}
               onOpenPicker={handleOpenPicker}
+              onHoverColor={setHoverKey}
               mapping={roleMapping}
             />
             <ContrastPanel scheme={activeScheme} mapping={roleMapping} />

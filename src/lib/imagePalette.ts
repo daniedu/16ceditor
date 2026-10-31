@@ -1,5 +1,8 @@
 import { ColorScheme } from "./types";
-import { rgbToHex, hexToRgb, rgbToHsl, hslToRgb, contrastRatio, rgbToLab, labToRgb, deltaE2000 } from "./color";
+import {
+  rgbToHex, hexToRgb, rgbToHsl, hslToRgb, contrastRatio,
+  rgbToLab, labToRgb, deltaE2000,
+} from "./color";
 
 export type ExtractAlgorithm =
   | "kmeans"
@@ -12,7 +15,12 @@ export type ExtractAlgorithm =
   | "dominant"
   | "high-contrast"
   | "complementary"
-  | "quicktheme";
+  | "quicktheme"
+  | "pywal"
+  | "pywal-colorz"
+  | "pywal-colorthief"
+  | "wallust-kmeans"
+  | "wallust-ansi";
 
 export const ALGORITHM_LABELS: Record<ExtractAlgorithm, string> = {
   kmeans: "K-Means Clustering",
@@ -26,7 +34,17 @@ export const ALGORITHM_LABELS: Record<ExtractAlgorithm, string> = {
   "high-contrast": "High Contrast",
   complementary: "Complementary",
   quicktheme: "Quicktheme (Perceptual)",
+  pywal: "Pywal (IM Unique Colors)",
+  "pywal-colorz": "Pywal · colorz (K-Means)",
+  "pywal-colorthief": "Pywal · ColorThief (YIQ)",
+  "wallust-kmeans": "wallust K-Means (Lab/ΔE)",
+  "wallust-ansi": "wallust ANSI (HSV TTY)",
 };
+
+/** Extractors whose output is an ANSI0-15 slot palette (mapped straight into Base16). */
+const ANSI_SLOT_ALGORITHMS: Set<ExtractAlgorithm> = new Set([
+  "pywal", "pywal-colorz", "pywal-colorthief", "wallust-kmeans", "wallust-ansi",
+]);
 
 function rgbLuminance(r: number, g: number, b: number): number {
   const f = (v: number) => {
@@ -799,20 +817,325 @@ function extractQuicktheme(pixels: number[][], _k: number): number[][] {
   return colors.slice(0, 16);
 }
 
+// -- Pywal-family & wallust helpers (ported from the reference implementations) --
+
+function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  const d = mx - mn;
+  let h = 0;
+  if (d !== 0) {
+    if (mx === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+  }
+  return [h, mx === 0 ? 0 : d / mx, mx];
+}
+
+function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
+  h = ((h % 360) + 360) % 360;
+  const c = v * s;
+  const hp = h / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  let r = 0, g = 0, b = 0;
+  if (hp < 1) { r = c; g = x; }
+  else if (hp < 2) { r = x; g = c; }
+  else if (hp < 3) { g = c; b = x; }
+  else if (hp < 4) { g = x; b = c; }
+  else if (hp < 5) { r = x; b = c; }
+  else { r = c; b = x; }
+  const m = v - c;
+  return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+}
+
+function yiq(c: number[]): number {
+  return (299 * c[0] + 587 * c[1] + 114 * c[2]) / 1000;
+}
+
+function pywalLighten(hex: string, amount: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  return rgbToHex(r + (255 - r) * amount, g + (255 - g) * amount, b + (255 - b) * amount);
+}
+
+function pywalDarken(hex: string, amount: number): string {
+  const [r, g, b] = hexToRgb(hex);
+  return rgbToHex(r * (1 - amount), g * (1 - amount), b * (1 - amount));
+}
+
+function pywalBlend(a: string, b: string): string {
+  const [r1, g1, b1] = hexToRgb(a);
+  const [r2, g2, b2] = hexToRgb(b);
+  return rgbToHex((r1 + r2) / 2, (g1 + g2) / 2, (b1 + b2) / 2);
+}
+
+function mix(a: string, b: string, t: number): string {
+  const [r1, g1, b1] = hexToRgb(a);
+  const [r2, g2, b2] = hexToRgb(b);
+  return rgbToHex(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t);
+}
+/** Map a 16-slot ANSI (color0..color15) palette onto a Base16 scheme, deriving the grey ramp. */
+function ansi16ToScheme(hexes: string[], name: string, sourceImage?: string): ColorScheme {
+  const c = (i: number): string => hexes[Math.min(Math.max(i, 0), 15)] || hexes[0];
+  return {
+    name,
+    base00: c(0),
+    base01: mix(c(0), c(8), 0.45),
+    base02: c(8),
+    base03: mix(c(8), c(7), 0.35),
+    base04: mix(c(8), c(7), 0.7),
+    base05: c(7),
+    base06: mix(c(7), c(15), 0.5),
+    base07: c(15),
+    base08: c(1),
+    base09: c(9),
+    base0A: c(3),
+    base0B: c(2),
+    base0C: c(6),
+    base0D: c(4),
+    base0E: c(5),
+    base0F: c(15) === c(7) ? c(9) : mix(c(9), c(0), 0.3),
+    ...(sourceImage ? { sourceImage } : {}),
+  };
+}
+
+// -- Pywal `wal` backend: ImageMagick -unique-colors emulation + pywal's adjust() --
+
+function extractPywal(pixels: number[][], _k: number, light: boolean): number[][] {
+  let palette: number[][] = [];
+  for (let i = 0; i < 20; i++) {
+    palette = octreeExtract(pixels, 16 + i);
+    if (palette.length >= 16) break;
+  }
+  while (palette.length < 16) palette.push(palette[palette.length - 1] || [128, 128, 128]);
+  // ImageMagick -unique-colors output is ordered dark -> light; keep that ordering via YIQ.
+  const cols = [...palette].sort((a, b) => yiq(a) - yiq(b));
+  const hexes = cols.map((c) => rgbToHex(c[0], c[1], c[2]));
+  const raw = [hexes[0], ...hexes.slice(8, 16), ...hexes.slice(8, 15)];
+
+  if (light) {
+    raw[0] = pywalLighten(hexes[15], 0.85);
+    raw[7] = hexes[0];
+    raw[8] = pywalDarken(hexes[15], 0.4);
+    raw[15] = hexes[0];
+  } else {
+    if (raw[0][1] !== "0") raw[0] = pywalDarken(raw[0], 0.4);
+    raw[7] = pywalBlend(raw[7], "#EEEEEE");
+    raw[8] = pywalDarken(raw[7], 0.3);
+    raw[15] = pywalBlend(raw[15], "#EEEEEE");
+  }
+  return raw.map((h) => [...hexToRgb(h)]);
+}
+
+// -- Pywal `colorz` backend: K-Means (n=6) + generic_adjust --
+
+function extractPywalColorz(pixels: number[][], _k: number, light: boolean): number[][] {
+  const cols = kMeans(pixels, 6, 20).map((c) => rgbToHex(c[0], c[1], c[2]));
+  const filler = cols[cols.length - 1] || "#333333";
+  while (cols.length < 6) cols.push(filler);
+  const raw: string[] = [
+    cols[0], ...cols, "#FFFFFF", "#000000", ...cols, "#FFFFFF",
+  ];
+  if (light) {
+    raw[0] = pywalLighten(raw[0], 0.95);
+    raw[7] = pywalDarken(raw[0], 0.75);
+    raw[8] = pywalDarken(raw[0], 0.25);
+    raw[15] = raw[7];
+  } else {
+    raw[0] = pywalDarken(raw[0], 0.8);
+    raw[7] = pywalLighten(raw[0], 0.75);
+    raw[8] = pywalLighten(raw[0], 0.25);
+    raw[15] = raw[7];
+  }
+  return raw.map((h) => [...hexToRgb(h)]);
+}
+
+// -- Pywal `colorthief` backend: 8-color聚类, YIQ sort, duplicated across rows --
+
+function extractPywalColorthief(pixels: number[][], _k: number, light: boolean): number[][] {
+  let cols = kMeans(pixels, 8, 40);
+  cols = [...cols].sort((a, b) => yiq(a) - yiq(b));
+  const hexes = cols.map((c) => rgbToHex(c[0], c[1], c[2]));
+  const raw = [...hexes, ...hexes];
+  if (light) {
+    raw[0] = pywalLighten(hexes[0], 0.9);
+    raw[7] = pywalDarken(hexes[0], 0.75);
+  } else {
+    raw[0] = pywalDarken(hexes[0], 0.8);
+    raw[7] = pywalLighten(hexes[0], 0.6);
+  }
+  raw[8] = pywalLighten(hexes[0], 0.2);
+  raw[15] = raw[7];
+  return raw.map((h) => [...hexToRgb(h)]);
+}
+
+// -- wallust `kmeans` palette: Lab clustering, ΔE dedup, even sampling, +10L bright black --
+
+function extractWallustKmeans(pixels: number[][], _k: number, light: boolean): number[][] {
+  const labPixels = pixels.map((p) => {
+    const lab = rgbToLab(p[0], p[1], p[2]);
+    return [lab.l, lab.a, lab.b];
+  });
+
+  const centroids = kMeans(labPixels, 16, 20).sort((a, b) => a[0] - b[0]);
+
+  const deduped: number[][] = [];
+  for (const c of centroids) {
+    const prev = deduped[deduped.length - 1];
+    if (prev && deltaE2000({ l: prev[0], a: prev[1], b: prev[2] }, { l: c[0], a: c[1], b: c[2] }) < 10) continue;
+    deduped.push(c);
+  }
+  const n = Math.max(1, deduped.length);
+  const sample = (i: number): number[] => {
+    const idx = n === 1 ? 0 : Math.floor((i * (n - 1)) / 7);
+    const lab = deduped[idx];
+    return [...labToRgb(lab[0], lab[1], lab[2])];
+  };
+  const c: number[][] = [0, 1, 2, 3, 4, 5, 6, 7].map(sample);
+
+  const brightBlack = (from: number[], invert: boolean): number[] => {
+    const lab = rgbToLab(Math.round(from[0]), Math.round(from[1]), Math.round(from[2]));
+    const l = invert ? Math.max(0, lab.l - 10) : Math.min(100, lab.l + 10);
+    return [...labToRgb(l, lab.a, lab.b)];
+  };
+
+  if (light) {
+    const rs = [...c].reverse();
+    return [rs[0], ...rs.slice(1, 7), rs[7], brightBlack(rs[0], true), ...rs.slice(1, 7), rs[7]];
+  }
+  return [c[0], ...c.slice(1, 7), c[7], brightBlack(c[0], false), ...c.slice(1, 7), c[7]];
+}
+
+// -- wallust `ansi` palette: HSV hue classification into TTY slots (ported from ansi.rs) --
+
+type HueRange = { hueStart: number; hueEnd: number; satDef: number; valDef: number };
+const WALLUST_RANGES: Record<string, HueRange> = {
+  red:     { hueStart: 0,   hueEnd: 60,  satDef: 0.9, valDef: 0.65 },
+  yellow:  { hueStart: 60,  hueEnd: 120, satDef: 0.9, valDef: 0.75 },
+  green:   { hueStart: 120, hueEnd: 180, satDef: 0.8, valDef: 0.65 },
+  cyan:    { hueStart: 180, hueEnd: 210, satDef: 0.8, valDef: 0.75 },
+  blue:    { hueStart: 210, hueEnd: 280, satDef: 0.9, valDef: 0.55 },
+  magenta: { hueStart: 280, hueEnd: 360, satDef: 0.8, valDef: 0.7 },
+};
+const DARK_RANGES: Record<string, HueRange> = {
+  red:     { ...WALLUST_RANGES.red,     valDef: 0.45 },
+  yellow:  { ...WALLUST_RANGES.yellow,  valDef: 0.55 },
+  green:   { ...WALLUST_RANGES.green,   valDef: 0.45 },
+  cyan:    { ...WALLUST_RANGES.cyan,    valDef: 0.55 },
+  blue:    { ...WALLUST_RANGES.blue,    valDef: 0.35 },
+  magenta: { ...WALLUST_RANGES.magenta, valDef: 0.5 },
+};
+const W_T = 0.5; // trust in ANSI defaults vs image colors
+
+function wallustAvg(arr: number[]): number {
+  if (!arr.length) return 0;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+function wallustGetColor(specs: [number, number, number][], range: HueRange): [number, number, number] {
+  const hues: number[] = [], sats: number[] = [], vals: number[] = [];
+  const kept = specs.filter((spec) => {
+    const [h, s, v] = spec;
+    if (h >= range.hueStart && h <= range.hueEnd) {
+      hues.push(h); sats.push(s); vals.push(v);
+      return false; // drain matched pixels so slots can't reuse them
+    }
+    return true;
+  });
+  specs.length = 0;
+  for (const k of kept) specs.push(k);
+
+  const hue = hues.length
+    ? W_T * (range.hueStart + range.hueEnd) / 2 + (1 - W_T) * wallustAvg(hues)
+    : (range.hueStart + range.hueEnd) / 2;
+  const sat = sats.length
+    ? W_T * range.satDef + (1 - W_T) * wallustAvg(sats)
+    : range.satDef;
+  const val = vals.length
+    ? W_T * range.valDef + (1 - W_T) * wallustAvg(vals)
+    : range.valDef;
+
+  return hsvToRgb(hue, sat, val);
+}
+
+function extractWallustAnsi(pixels: number[][], _k: number, light: boolean): number[][] {
+  const specs: [number, number, number][] = pixels.map((p) => rgbToHsv(p[0], p[1], p[2]));
+
+  const darkV = 0.05, lightyV = 0.95;
+
+  const black = (() => {
+    const found = specs.find(([, , v]) => v < darkV);
+    if (found) return hsvToRgb(found[0], found[1] * 0.3, found[2]);
+    return hsvToRgb(
+      wallustAvg(specs.map((s) => s[0])),
+      (wallustAvg(specs.map((s) => s[1]))) / 3,
+      (7 * darkV + wallustAvg(specs.map((s) => s[2]))) / 8,
+    );
+  })();
+
+  const gray = (() => {
+    const found = specs.find(([, , v]) => v > lightyV);
+    if (found) return hsvToRgb(found[0], found[1] * 0.3, found[2]);
+    return hsvToRgb(
+      wallustAvg(specs.map((s) => s[0])),
+      wallustAvg(specs.map((s) => s[1])) / 3,
+      (4 * lightyV + wallustAvg(specs.map((s) => s[2]))) / 5,
+    );
+  })();
+
+  const ranges = light ? DARK_RANGES : WALLUST_RANGES;
+  const red = wallustGetColor(specs, ranges.red);
+  const yellow = wallustGetColor(specs, ranges.yellow);
+  const green = wallustGetColor(specs, ranges.green);
+  const cyan = wallustGetColor(specs, ranges.cyan);
+  const blue = wallustGetColor(specs, ranges.blue);
+  const magenta = wallustGetColor(specs, ranges.magenta);
+
+  // palette-crate fixed-factor lighten/darken on the HSV value component
+  const fixV = (rgb: number[], delta: number): [number, number, number] => {
+    const [h, s, v] = rgbToHsv(rgb[0] as number, rgb[1] as number, rgb[2] as number);
+    return hsvToRgb(h, s, Math.max(0, Math.min(1, v + delta)));
+  };
+
+  if (light) {
+    return [
+      [...fixV(black, 0)], // color0 = black
+      [...red], [...green], [...yellow], [...blue], [...magenta], [...cyan],
+      [...fixV(gray, -0.1)], // color7 = gray darkened
+      [...fixV(black, 0.1)], // color8
+      [...red], [...green], [...yellow], [...blue], [...magenta], [...cyan],
+      [...gray], // color15
+    ];
+  }
+  return [
+    [...fixV(black, 0.1)], // color0 = black lightened
+    [...red], [...green], [...yellow], [...blue], [...magenta], [...cyan],
+    [...gray], // color7 = gray
+    [...fixV(black, 0.25)], // color8
+    [...red], [...green], [...yellow], [...blue], [...magenta], [...cyan],
+    [...gray], // color15
+  ];
+}
+
 // -- Main entry point --
 
-const extractors: Record<ExtractAlgorithm, (pixels: number[][], k: number) => number[][]> = {
-  kmeans: extractKMeans,
-  "median-cut": medianCutExtract,
-  histogram: histogramExtract,
-  octree: octreeExtract,
-  monochrome: extractMonochrome,
-  vibrant: extractVibrant,
-  muted: extractMuted,
-  dominant: extractDominant,
-  "high-contrast": extractHighContrast,
-  complementary: extractComplementary,
-  quicktheme: extractQuicktheme,
+const extractors: Record<ExtractAlgorithm, (pixels: number[][], k: number, light: boolean) => number[][]> = {
+  kmeans: (p, k) => extractKMeans(p, k),
+  "median-cut": (p, k) => medianCutExtract(p, k),
+  histogram: (p, k) => histogramExtract(p, k),
+  octree: (p, k) => octreeExtract(p, k),
+  monochrome: (p, k) => extractMonochrome(p, k),
+  vibrant: (p, k) => extractVibrant(p, k),
+  muted: (p, k) => extractMuted(p, k),
+  dominant: (p, k) => extractDominant(p, k),
+  "high-contrast": (p, k) => extractHighContrast(p, k),
+  complementary: (p, k) => extractComplementary(p, k),
+  quicktheme: (p, k) => extractQuicktheme(p, k),
+  pywal: extractPywal,
+  "pywal-colorz": extractPywalColorz,
+  "pywal-colorthief": extractPywalColorthief,
+  "wallust-kmeans": extractWallustKmeans,
+  "wallust-ansi": extractWallustAnsi,
 };
 
 const pixelCache = new WeakMap<File, Promise<{ dataUrl: string; pixels: number[][] }>>();
@@ -820,6 +1143,7 @@ const pixelCache = new WeakMap<File, Promise<{ dataUrl: string; pixels: number[]
 export async function extractPalette(
   file: File,
   algorithm: ExtractAlgorithm = "kmeans",
+  light = false,
 ): Promise<ColorScheme> {
   let promise = pixelCache.get(file);
   if (!promise) {
@@ -833,15 +1157,20 @@ export async function extractPalette(
   }
   const { dataUrl, pixels } = await promise;
   const extractor = extractors[algorithm];
-  const colors = extractor(pixels, 16);
+  const colors = extractor(pixels, 16, light);
 
   const name = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
 
   if (colors.length < 16) {
     const padding = 16 - colors.length;
     for (let i = 0; i < padding; i++) {
-      colors.push(colors[i % colors.length]);
+      colors.push(colors[i % colors.length] || [128, 128, 128]);
     }
+  }
+
+  if (ANSI_SLOT_ALGORITHMS.has(algorithm)) {
+    const hexes = colors.slice(0, 16).map((c) => rgbToHex(c[0], c[1], c[2]));
+    return ansi16ToScheme(hexes, name || "From Image", dataUrl);
   }
 
   return {

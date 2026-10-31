@@ -55,9 +55,11 @@ function generateFromBase(base: ColorScheme, seed: number): ColorScheme {
 }
 
 const ALL_ALGORITHMS: ExtractAlgorithm[] = [
-  "kmeans", "median-cut", "histogram",
+  "kmeans", "median-cut", "histogram", "octree",
   "monochrome", "vibrant", "muted", "dominant",
   "high-contrast", "complementary", "quicktheme",
+  "pywal", "pywal-colorz", "pywal-colorthief",
+  "wallust-kmeans", "wallust-ansi",
 ];
 
 interface GeneratePanelProps {
@@ -72,6 +74,7 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
   const [generated, setGenerated] = useState<ColorScheme | null>(null);
   const [name, setName] = useState("");
   const [extracting, setExtracting] = useState(false);
+  const [light, setLight] = useState(false);
   const [algorithm, setAlgorithm] = useState<ExtractAlgorithm>("kmeans");
   const [compareResults, setCompareResults] = useState<Record<string, ColorScheme> | null>(null);
   const [comparing, setComparing] = useState(false);
@@ -109,13 +112,25 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
     const label = ALGORITHM_LABELS[algorithm];
     console.time(`extract: ${label}`);
     try {
-      const result = await extractPalette(f, algorithm);
+      const result = await extractPalette(f, algorithm, light);
       setGenerated(result);
       setName(result.name);
     } catch {}
     console.timeEnd(`extract: ${label}`);
     setExtracting(false);
-  }, [algorithm]);
+  }, [algorithm, light]);
+
+  const handleApplyPolarity = useCallback(async (newLight: boolean) => {
+    setLight(newLight);
+    if (!uploadedFile) return;
+    setExtracting(true);
+    try {
+      const result = await extractPalette(uploadedFile, algorithm, newLight);
+      setGenerated(result);
+      setName(result.name);
+    } catch {}
+    setExtracting(false);
+  }, [uploadedFile, algorithm]);
 
   const handleCompareAll = useCallback(async () => {
     if (!uploadedFile) return;
@@ -126,14 +141,14 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
       for (const alg of ALL_ALGORITHMS) {
         const label = ALGORITHM_LABELS[alg];
         console.time(`extract: ${label}`);
-        const r = await extractPalette(uploadedFile, alg);
+        const r = await extractPalette(uploadedFile, alg, light);
         console.timeEnd(`extract: ${label}`);
         results[alg] = r;
       }
     } catch {}
     setCompareResults(results);
     setComparing(false);
-  }, [uploadedFile]);
+  }, [uploadedFile, light]);
 
   const handleSelectResult = (alg: ExtractAlgorithm) => {
     if (!compareResults?.[alg]) return;
@@ -144,10 +159,11 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
   };
 
   const algorithmGroups: { label: string; algs: ExtractAlgorithm[] }[] = [
-    { label: "Standard", algs: ["kmeans", "median-cut", "histogram"] },
+    { label: "Standard", algs: ["kmeans", "median-cut", "histogram", "octree"] },
     { label: "Themed", algs: ["monochrome", "vibrant", "muted", "dominant"] },
     { label: "Accessibility", algs: ["high-contrast", "complementary"] },
     { label: "Perceptual", algs: ["quicktheme"] },
+    { label: "From other tools", algs: ["pywal", "pywal-colorz", "pywal-colorthief", "wallust-kmeans", "wallust-ansi"] },
   ];
 
   return (
@@ -227,7 +243,31 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
           </div>
         ) : (
           <div>
-            <div className="text-[12px] font-semibold mb-1" style={{ color: scheme.base04 }}>ALGORITHM</div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-[12px] font-semibold" style={{ color: scheme.base04 }}>ALGORITHM</div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleApplyPolarity(false)}
+                  className="px-2 py-0.5 text-[11px] font-semibold"
+                  style={{
+                    background: !light ? scheme.base0D : scheme.base02,
+                    color: !light ? scheme.base00 : scheme.base04,
+                  }}
+                >
+                  Dark
+                </button>
+                <button
+                  onClick={() => handleApplyPolarity(true)}
+                  className="px-2 py-0.5 text-[11px] font-semibold"
+                  style={{
+                    background: light ? scheme.base0D : scheme.base02,
+                    color: light ? scheme.base00 : scheme.base04,
+                  }}
+                >
+                  Light
+                </button>
+              </div>
+            </div>
             {algorithmGroups.map((group) => (
               <div key={group.label} className="mb-2">
                 <div className="text-[10px] font-semibold tracking-wider mb-0.5" style={{ color: scheme.base03 }}>
@@ -308,7 +348,7 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
                 {comparing ? (
                   <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Comparing all algorithms...</>
                 ) : (
-                  <><Sparkles className="w-3.5 h-3.5" /> Compare All 10 Algorithms</>
+                  <><Sparkles className="w-3.5 h-3.5" /> Compare All {ALL_ALGORITHMS.length} Algorithms</>
                 )}
               </button>
             )}
