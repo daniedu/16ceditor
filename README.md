@@ -1,7 +1,7 @@
 # 16 Colour Editor
 
 Design, preview, and export **Base16 colour schemes** for terminal, GTK, and Qt environments.  
-Upload an image, pick an algorithm to extract a palette, then tweak each colour individually. Export to Alacritty, Xresources, GTK CSS, Qt stylesheets, KDE Konsole, Base16 JSON/YAML, or Terminal.sexy JSON.
+Upload an image, pick an algorithm to extract a palette, then tweak each colour individually. Export to Alacritty, Xresources, GTK CSS, Qt stylesheets, KDE Konsole, Kitty, Ghostty, Neovim (Lua), Base16 JSON/YAML, or Terminal.sexy JSON.
 
 Built for people who want full control over their terminal and desktop theme colours — import into [Stylix](https://github.com/danth/stylix) or your NixOS config directly.
 
@@ -9,6 +9,7 @@ Built for people who want full control over their terminal and desktop theme col
 
 - **16 Base16 colour swatches** — edit with hex input or a colour picker popover
 - **Undo/redo** per colour — history is per-swatch, survives scheme switches
+- **Hyprland-style fake desktop preview** — wallpaper, Waybar-style top bar, active/inactive window borders, launcher, all driven by the scheme (terminal.sexy-style screenshot simulation)
 - **Image palette extraction** — upload an image and pick from 16 algorithms (each ported from / inspired by its namesake tool):
   - *K-Means* — balanced clustering
   - *Median Cut* — fast, good for dominant colours
@@ -26,11 +27,12 @@ Built for people who want full control over their terminal and desktop theme col
 - **Hover inspection** — hover a colour row to highlight every element it paints across all previews (Stylix role check)
 - **Large image picker** — pan, zoom, pick any pixel colour straight from the image
 - **Saturation badges** — hover any swatch to see saturation % (green/yellow/red)
-- **Previews** — terminal ANSI, GTK, Qt, code syntax highlight
+- **Previews** — fake Hyprland desktop, terminal ANSI, GTK, Qt, multi-language code editor
+- **Syntax preview in 4 languages** — Rust, TypeScript, Python, Bash; paste your own code to preview it with the scheme
 - **WCAG contrast analysis** — checks 5 key background/foreground pairs
-- **Export** — 8 formats, all with colour-highlighted hex values
+- **Export** — 11 formats, all with colour-highlighted hex values
 - **Import** — paste Base16 JSON or YAML
-- **Persistent** — schemes saved to `localStorage`; also bakes in as preset defaults
+- **Persistent** — schemes saved to `localStorage` (debounced writes; images stored separately so editing colours never re-serialises the wallpaper)
 
 ## How other ricing tools generate palettes from a wallpaper
 
@@ -45,6 +47,10 @@ These tools were used as references for the algorithms above — the site now po
 | [wpgtk](https://github.com/deviantfero/wpgtk) | GUI wrapper around pywal; uses pywal's backends | — (use the pywal algorithms) |
 | [Chameleon](https://github.com/GideonWolfe/Chameleon) | shell wrapper around pywal's wal binary | — (use the pywal algorithms) |
 | [Stylix](https://github.com/danth/stylix) | consumes a Base16 scheme — see the site's role mappings which match Stylix defaults exactly | site previews apply colours the same way |
+| [pywal-themes-preview](https://github.com/adamrutter/pywal-themes-preview) | fake-terminal per-theme screenshot blocks for the 250 built-in pywal themes | same fake-terminal technique in our previews |
+| [Paletty](https://paletty.dev/) | extract palettes from images, preview on terminal mockups, community gallery | extraction + terminal mockup previews |
+
+Verified-unavailable: some guide references (ricetheme, miozu-theme, a specific "Hyprland simulator in the Stylix community") could not be confirmed to exist as described; techniques from them are implemented directly instead of citing them.
 
 ## Adding default schemes
 

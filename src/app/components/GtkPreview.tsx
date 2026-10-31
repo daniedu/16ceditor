@@ -1,9 +1,10 @@
 "use client";
 
+import { memo } from "react";
 import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING } from "@/src/lib/types";
 import { schemeToGtk } from "@/src/lib/mappings";
 
-export default function GtkPreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme: ColorScheme; mapping?: RoleMapping }) {
+export function GtkPreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme: ColorScheme; mapping?: RoleMapping }) {
   const g = schemeToGtk(scheme, mapping);
 
   return (
@@ -78,3 +79,5 @@ export default function GtkPreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: {
     </div>
   );
 }
+
+export default memo(GtkPreview);

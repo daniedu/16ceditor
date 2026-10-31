@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ColorScheme, AnsiSlotMap, DEFAULT_TERMINAL_ANSI, TerminalAppearance, DEFAULT_TERMINAL_APPEARANCE } from "@/src/lib/types";
 import { schemeToAnsi } from "@/src/lib/mappings";
 
@@ -18,7 +19,7 @@ const prompt = (a: ReturnType<typeof schemeToAnsi>) => (
   </span>
 );
 
-export default function TerminalPreview({
+export function TerminalPreview({
   scheme,
   ansiMap = DEFAULT_TERMINAL_ANSI,
   appearance = DEFAULT_TERMINAL_APPEARANCE,
@@ -128,3 +129,5 @@ export default function TerminalPreview({
     </div>
   );
 }
+
+export default memo(TerminalPreview);

@@ -1,9 +1,10 @@
 "use client";
 
+import { memo } from "react";
 import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING } from "@/src/lib/types";
 import { schemeToQt } from "@/src/lib/mappings";
 
-export default function QtPreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme: ColorScheme; mapping?: RoleMapping }) {
+export function QtPreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme: ColorScheme; mapping?: RoleMapping }) {
   const q = schemeToQt(scheme, mapping);
 
   return (
@@ -96,3 +97,5 @@ export default function QtPreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { 
     </div>
   );
 }
+
+export default memo(QtPreview);

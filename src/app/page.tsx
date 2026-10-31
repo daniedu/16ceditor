@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useDeferredValue } from "react";
 import { ColorScheme, ViewTab, BaseKey, RoleMapping, DEFAULT_ROLE_MAPPING, ColorSettings, DEFAULT_COLOR_SETTINGS } from "@/src/lib/types";
 import { presets, createEmptyScheme } from "@/src/lib/presets";
 import { usePersistedSchemes } from "@/src/lib/usePersistedSchemes";
 import { useUndoRedo } from "@/src/lib/useUndoRedo";
-import { pickColorFromImage, hexToRgb } from "@/src/lib/color";import { useMediaQuery } from "@/src/lib/useMediaQuery";
+import { pickColorFromImage, hexToRgb } from "@/src/lib/color";
+import { useMediaQuery } from "@/src/lib/useMediaQuery";
 import Sidebar from "./components/Sidebar";
 import ColorEditor from "./components/ColorEditor";
 import ContrastPanel from "./components/ContrastPanel";
@@ -13,6 +14,7 @@ import TerminalPreview from "./components/TerminalPreview";
 import GtkPreview from "./components/GtkPreview";
 import QtPreview from "./components/QtPreview";
 import CodePreview from "./components/CodePreview";
+import DesktopPreview from "./components/DesktopPreview";
 import GeneratePanel from "./components/GeneratePanel";
 import SettingsPanel from "./components/SettingsPanel";
 import ImportExport from "./components/ImportExport";
@@ -77,6 +79,9 @@ export default function Home() {
 
   const FALLBACK_SCHEME = presets[0] || createEmptyScheme("Fallback");
   const activeScheme = schemes.find((s) => s.slug === activeSlug) || schemes[0] || FALLBACK_SCHEME;
+
+  const previewScheme = useDeferredValue(activeScheme);
+  const previewMapping = useDeferredValue(roleMapping);
 
   useEffect(() => {
     for (const item of highlightedRef.current) {
@@ -393,10 +398,13 @@ export default function Home() {
                   </span>
                 </div>
                 {sourceImage}
-                <TerminalPreview scheme={activeScheme} ansiMap={colorSettings.terminal.ansi} appearance={colorSettings.terminal.appearance} />
-                <GtkPreview scheme={activeScheme} mapping={roleMapping} />
-                <QtPreview scheme={activeScheme} mapping={roleMapping} />
-                <CodePreview scheme={activeScheme} mapping={roleMapping} />
+                <div className="lg:col-span-2">
+                  <DesktopPreview scheme={previewScheme} mapping={previewMapping} wallpaper={activeScheme.sourceImage} />
+                </div>
+                <TerminalPreview scheme={previewScheme} ansiMap={colorSettings.terminal.ansi} appearance={colorSettings.terminal.appearance} />
+                <GtkPreview scheme={previewScheme} mapping={previewMapping} />
+                <QtPreview scheme={previewScheme} mapping={previewMapping} />
+                <CodePreview scheme={previewScheme} mapping={previewMapping} />
               </div>
             )}
 
