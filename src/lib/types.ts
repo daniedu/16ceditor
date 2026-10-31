@@ -100,16 +100,25 @@ export type AnsiSlotMap = Record<AnsiSlot, BaseKey>;
 export const DEFAULT_TERMINAL_ANSI: AnsiSlotMap = {
   color0: "base00", color1: "base08", color2: "base0B", color3: "base0A",
   color4: "base0D", color5: "base0E", color6: "base0C", color7: "base05",
-  color8: "base02", color9: "base08", color10: "base0B", color11: "base0A",
-  color12: "base0D", color13: "base0E", color14: "base0C", color15: "base07",
+  color8: "base03", color9: "base09", color10: "base01", color11: "base02",
+  color12: "base04", color13: "base06", color14: "base0F", color15: "base07",
 };
 
-export const DEFAULT_CONSOLE_ANSI: AnsiSlotMap = {
+export const ALACRITTY_ANSI: AnsiSlotMap = {
+  color0: "base00", color1: "base08", color2: "base0B", color3: "base0A",
+  color4: "base0D", color5: "base0E", color6: "base0C", color7: "base05",
+  color8: "base02", color9: "base09", color10: "base01", color11: "base02",
+  color12: "base04", color13: "base06", color14: "base0F", color15: "base07",
+};
+
+export const GHOSTTY_ANSI: AnsiSlotMap = {
   color0: "base00", color1: "base08", color2: "base0B", color3: "base0A",
   color4: "base0D", color5: "base0E", color6: "base0C", color7: "base05",
   color8: "base03", color9: "base08", color10: "base0B", color11: "base0A",
   color12: "base0D", color13: "base0E", color14: "base0C", color15: "base07",
 };
+
+export const DEFAULT_CONSOLE_ANSI: AnsiSlotMap = GHOSTTY_ANSI;
 
 export interface TerminalAppearance {
   cursor: BaseKey;
@@ -121,8 +130,8 @@ export interface TerminalAppearance {
 export const DEFAULT_TERMINAL_APPEARANCE: TerminalAppearance = {
   cursor: "base05",
   cursorText: "base00",
-  selectionBg: "base03",
-  selectionFg: "base05",
+  selectionBg: "base05",
+  selectionFg: "base00",
 };
 
 export interface ColorSettings {

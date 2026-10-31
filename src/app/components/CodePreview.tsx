@@ -5,11 +5,22 @@ import { ColorScheme, RoleMapping, DEFAULT_ROLE_MAPPING, BaseKey } from "@/src/l
 
 type CodeLang = "rust" | "typescript" | "python" | "bash";
 
-const LANGS: Record<CodeLang, { label: string; file: string; snippet: string; keywords: string[] }> = {
+interface LangDef {
+  label: string;
+  file: string;
+  keywords: string[];
+  types: string[];
+  constants: string[];
+  snippet: string;
+}
+
+const LANGS: Record<CodeLang, LangDef> = {
   rust: {
     label: "Rust",
     file: "main.rs",
-    keywords: ["fn", "let", "mut", "for", "in", "match", "if", "else", "return", "println", "u32", "struct", "impl", "enum", "use", "pub"],
+    keywords: ["fn", "let", "mut", "for", "in", "match", "if", "else", "return", "struct", "impl", "enum", "use", "pub", "loop", "while", "as"],
+    types: ["u32", "u64", "i32", "i64", "f32", "f64", "str", "String", "bool", "Vec"],
+    constants: [],
     snippet: `fn fibonacci(n: u32) -> u32 {
   match n {
     0 | 1 => n,
@@ -30,7 +41,9 @@ fn main() {
   typescript: {
     label: "TypeScript",
     file: "theme.ts",
-    keywords: ["import", "export", "from", "const", "let", "var", "function", "return", "class", "new", "async", "await", "if", "else", "for", "while", "interface", "type", "null", "undefined", "default"],
+    keywords: ["import", "export", "from", "const", "let", "var", "function", "return", "class", "new", "async", "await", "if", "else", "for", "while", "typeof", "default"],
+    types: ["string", "number", "boolean", "Array", "Map", "Set", "Record"],
+    constants: ["null", "undefined", "true", "false"],
     snippet: `import { theme } from "./colors";
 
 // flatten base16 into tailwind vars
@@ -48,7 +61,9 @@ export function contrast(fg: string, bg: string): number {
   python: {
     label: "Python",
     file: "main.py",
-    keywords: ["def", "return", "import", "from", "class", "for", "in", "if", "elif", "else", "while", "lambda", "print", "self", "None", "True", "False", "with", "open", "range", "not"],
+    keywords: ["def", "return", "import", "from", "class", "for", "in", "if", "elif", "else", "while", "lambda", "with", "not", "and", "or", "pass", "raise"],
+    types: ["int", "str", "dict", "list"],
+    constants: ["None", "True", "False"],
     snippet: `from pathlib import Path
 
 # pick the darkest colour as terminal bg
@@ -68,7 +83,9 @@ if __name__ == "__main__":
   bash: {
     label: "Bash",
     file: "rice.sh",
-    keywords: ["echo", "export", "if", "then", "fi", "for", "do", "done", "while", "function", "sudo", "pacman", "grep", "sed", "case", "esac", "source", "local"],
+    keywords: ["if", "then", "fi", "for", "in", "do", "done", "while", "case", "esac", "function", "local", "return", "source"],
+    types: [],
+    constants: [],
     snippet: `#!/usr/bin/env bash
 # apply palette system-wide
 
@@ -111,7 +128,7 @@ export function CodePreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme
             style={{
               background: l === lang ? scheme.base00 : scheme.base01,
               color: l === lang ? scheme.base05 : scheme.base03,
-              borderColor: `var(--color-surface-high)`,
+              borderColor: "var(--color-surface-high)",
             }}
           >
             {LANGS[l].label}
@@ -120,7 +137,7 @@ export function CodePreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme
       </div>
 
       <div className="flex gap-0.5 px-3 pt-2 bg-surface-low">
-        {([meta.file, "lib.rs", "types.rs"].map((f, i) => ({ f, i }))).map(({ f, i }) => (
+        {[meta.file, "lib.rs", "types.rs"].map((f, i) => (
           <div
             key={f}
             className="px-2 py-1 text-[13px] border-t border-l border-r border-surface-high"
@@ -138,11 +155,11 @@ export function CodePreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme
 
       <pre
         className="p-3 text-[14px] leading-relaxed overflow-x-auto font-mono border-t border-surface-high"
-        style={{ background: scheme.base00 }}
+        style={{ background: scheme[mapping.bg] }}
       >
         {code.split("\n").map((line, i) => (
           <div key={i} className="flex">
-            <span className="w-6 text-right mr-2 shrink-0 select-none text-[15px] text-outline" style={{ color: scheme.base03 }}>
+            <span className="w-6 text-right mr-2 shrink-0 select-none text-[15px]" style={{ color: scheme.base03 }}>
               {i + 1}
             </span>
             <span>{tokenize(line, scheme, mapping, lang)}</span>
@@ -159,10 +176,10 @@ export function CodePreview({ scheme, mapping = DEFAULT_ROLE_MAPPING }: { scheme
       />
 
       <div className="flex items-center gap-2 px-3 py-1.5 text-[15px] border-t border-surface-high" style={{ background: scheme.base01, color: "var(--color-outline)" }}>
-        <span className="w-1.5 h-1.5" style={{ background: scheme.base0B }} />
+        <span className="w-1.5 h-1.5" style={{ background: scheme[mapping.green] }} />
         <span>{customCode ? "custom" : meta.label}</span>
         {customCode && (
-          <button onClick={() => setCustomCode(null)} className="underline" style={{ color: scheme.base0D }}>
+          <button onClick={() => setCustomCode(null)} className="underline" style={{ color: scheme[mapping.blue] }}>
             reset
           </button>
         )}
@@ -183,41 +200,62 @@ const COMMENT_START: Record<CodeLang, string> = {
 };
 
 function tokenize(line: string, s: ColorScheme, mapping: RoleMapping, lang: CodeLang) {
-  const meta = LANGS[lang];
+  const { keywords, types, constants } = LANGS[lang];
+  const wordAlt = (words: string[]) => (words.length ? new RegExp(`^(?:${words.join("|")})\\b`) : null);
+  const kwRe = wordAlt(keywords);
+  const tyRe = wordAlt(types);
+  const cRe = wordAlt(constants);
   const parts: { text: string; color: string }[] = [];
-  const trimmed = line.trimStart();
+  const push = (text: string, color: string) => { parts.push({ text, color }); };
 
-  if (trimmed.startsWith(COMMENT_START[lang])) {
-    return <span style={{ color: s.base03 }}>{line}</span>;
+  if (line.trimStart().startsWith(COMMENT_START[lang])) {
+    return <span style={{ color: s[mapping.muted] }}>{line}</span>;
   }
 
   let i = 0;
   while (i < line.length) {
     const rest = line.slice(i);
-    const inlineComment = rest.startsWith(COMMENT_START[lang]);
-    if (inlineComment) {
-      parts.push({ text: rest, color: s.base03 });
-      break;
+
+    if (rest.startsWith(COMMENT_START[lang])) { push(rest, s[mapping.muted]); break; }
+
+    const kw = kwRe ? rest.match(kwRe) : null;
+    if (kw) { push(kw[0], s[mapping.magenta]); i += kw[0].length; continue; }
+
+    const cnst = cRe ? rest.match(cRe) : null;
+    if (cnst) { push(cnst[0], s[mapping.orange]); i += cnst[0].length; continue; }
+
+    const ty = tyRe ? rest.match(tyRe) : null;
+    if (ty) { push(ty[0], s[mapping.yellow]); i += ty[0].length; continue; }
+
+    const num = rest.match(/^\d[\d_]*\.?\d*/);
+    if (num) { push(num[0], s[mapping.orange]); i += num[0].length; continue; }
+
+    const str = rest.match(/^"[^"\n]*"?|^'[^'\n]*'?|^`[^`]*`?/);
+    if (str) { push(str[0], s[mapping.green]); i += str[0].length; continue; }
+
+    if (lang === "bash") {
+      const v = rest.match(/^\$\{?\w+\}?/);
+      if (v) { push(v[0], s[mapping.red]); i += v[0].length; continue; }
     }
-    const kw = rest.match(new RegExp(`^(?:${meta.keywords.join("|")})\\b`));
-    if (kw) { parts.push({ text: kw[0], color: s[mapping.magenta] }); i += kw[0].length; continue; }
-    const num = rest.match(/^\d+\.?\d*/);
-    if (num) { parts.push({ text: num[0], color: s[mapping.orange] }); i += num[0].length; continue; }
-    const str = rest.match(/^"[^"]*"?|^'[^']*'?|^`[^`]*`?/);
-    if (str) { parts.push({ text: str[0], color: s[mapping.green] }); i += str[0].length; continue; }
-    const id = rest.match(/^[a-zA-Z_\-]\w*/);
+
+    const shebangOrDec = rest.match(/^(?:@|#\!)\w+/);
+    if (shebangOrDec && (lang === "python" || lang === "bash")) { push(shebangOrDec[0], s[mapping.blue]); i += shebangOrDec[0].length; continue; }
+
+    const id = rest.match(/^[a-zA-Z_]\w*/);
     if (id) {
-      const decorator = rest[id[0].length] === ":" && lang === "python";
-      parts.push({ text: id[0], color: decorator ? s[mapping.yellow] : s[mapping.fg] });
+      const after = rest[id[0].length];
+      if (lang === "rust" && after === "!") { push(id[0] + "!", s[mapping.magenta]); i += id[0].length + 1; continue; }
+      if (/^[A-Z]/.test(id[0])) { push(id[0], s[mapping.yellow]); }
+      else if (after === "(") { push(id[0], s[mapping.blue]); }
+      else { push(id[0], s[mapping.red]); }
       i += id[0].length; continue;
     }
-    const sel = rest.match(/^\$\w+|^@\w+/);
-    if (sel) { parts.push({ text: sel[0], color: s[mapping.cyan] }); i += sel[0].length; continue; }
-    if ("(){}".includes(rest[0])) { parts.push({ text: rest[0], color: s[mapping.blue] }); i++; continue; }
-    if ("=+-*/!><.".includes(rest[0])) { parts.push({ text: rest[0], color: s[mapping.cyan] }); i++; continue; }
-    if (":;,".includes(rest[0])) { parts.push({ text: rest[0], color: s[mapping.darkFg] }); i++; continue; }
-    if (rest[0] === "_") { parts.push({ text: "_", color: s[mapping.yellow] }); i++; continue; }
-    parts.push({ text: rest[0], color: s[mapping.fg] }); i++;
+
+    if (":;,(){}[]".includes(rest[0])) { push(rest[0], s[mapping.fg]); i++; continue; }
+    if ("=+-*/<>!.".includes(rest[0])) { push(rest[0], s[mapping.fg]); i++; continue; }
+    if (rest[0] === "_") { push(rest[0], s[mapping.red]); i++; continue; }
+
+    push(rest[0], s[mapping.fg]); i++;
   }
   return parts.map((p, j) => <span key={j} style={{ color: p.color }}>{p.text}</span>);
 }

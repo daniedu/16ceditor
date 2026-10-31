@@ -1,6 +1,6 @@
 "use client";
 
-import { ColorScheme, ColorSettings, BaseKey, AnsiSlot, ANSI_SLOTS, ANSI_LABELS, DEFAULT_COLOR_SETTINGS, BASE_KEYS } from "@/src/lib/types";
+import { ColorScheme, ColorSettings, BaseKey, AnsiSlot, ANSI_SLOTS, ANSI_LABELS, DEFAULT_COLOR_SETTINGS, BASE_KEYS, AnsiSlotMap, TerminalAppearance, DEFAULT_TERMINAL_ANSI, ALACRITTY_ANSI, GHOSTTY_ANSI } from "@/src/lib/types";
 import { RotateCcw } from "lucide-react";
 
 const BASE16_ROLES: { key: BaseKey; role: string; description: string }[] = [
@@ -141,8 +141,27 @@ export default function SettingsPanel({
       </div>
 
       <div className="border rounded p-3" style={{ borderColor: scheme.base02, background: scheme.base01 }}>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+          <div className="text-[13px] font-semibold" style={{ color: scheme.base04 }}>KITTY / TERMINAL ANSI MAP</div>
+          <div className="flex gap-1">
+            {([
+              { id: "kitty", label: "Kitty (Stylix)", ansi: DEFAULT_TERMINAL_ANSI, appearance: { cursor: "base05", cursorText: "base00", selectionBg: "base05", selectionFg: "base00" } },
+              { id: "alacritty", label: "Alacritty (tinted)", ansi: ALACRITTY_ANSI, appearance: { cursor: "base05", cursorText: "base00", selectionBg: "base05", selectionFg: "base00" } },
+              { id: "ghostty", label: "Ghostty (Stylix)", ansi: GHOSTTY_ANSI, appearance: { cursor: "base05", cursorText: "base00", selectionBg: "base02", selectionFg: "base05" } },
+            ] as { id: string; label: string; ansi: AnsiSlotMap; appearance: TerminalAppearance }[]).map((t) => (
+              <button
+                key={t.id}
+                onClick={() => onChange({ ...settings, terminal: { ansi: t.ansi, appearance: t.appearance } })}
+                className="px-2 py-0.5 text-[11px] border rounded"
+                style={{ borderColor: scheme.base02, color: scheme.base04 }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <AnsiSlotEditor
-          label="KITTY / TERMINAL ANSI MAP"
+          label="SLOT MAP"
           scheme={scheme}
           ansiMap={settings.terminal.ansi}
           onChange={(ansi) => onChange({ ...settings, terminal: { ...settings.terminal, ansi } })}
@@ -150,8 +169,9 @@ export default function SettingsPanel({
       </div>
 
       <div className="border rounded p-3" style={{ borderColor: scheme.base02, background: scheme.base01 }}>
+        <div className="text-[13px] font-semibold mb-2" style={{ color: scheme.base04 }}>TERMINAL APPEARANCE</div>
         <AppearanceEditor
-          label="TERMINAL APPEARANCE"
+          label=""
           scheme={scheme}
           appearance={settings.terminal.appearance}
           onChange={(appearance) => onChange({ ...settings, terminal: { ...settings.terminal, appearance } })}

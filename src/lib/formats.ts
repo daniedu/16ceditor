@@ -8,21 +8,21 @@ function stripHash(h: string) {
 export const exportFormats: ExportFormat[] = [
   {
     id: "alacritty",
-    label: "Alacritty YAML",
-    extension: ".yml",
-    mime: "text/yaml",
+    label: "Alacritty (tinted-alacritty)",
+    extension: ".toml",
+    mime: "text/plain",
     generate: (s) =>
-      `# ${s.name}${s.author ? ` by ${s.author}` : ""}\ncolors:\n  primary:\n` +
-      `    background: '${s.base00}'\n    foreground: '${s.base05}'\n` +
-      `  cursor:\n    text: '${s.base00}'\n    cursor: '${s.base05}'\n` +
-      `  normal:\n    black: '${s.base00}'\n    red: '${s.base08}'\n` +
-      `    green: '${s.base0B}'\n    yellow: '${s.base0A}'\n` +
-      `    blue: '${s.base0D}'\n    magenta: '${s.base0E}'\n` +
-      `    cyan: '${s.base0C}'\n    white: '${s.base05}'\n` +
-      `  bright:\n    black: '${s.base03}'\n    red: '${s.base08}'\n` +
-      `    green: '${s.base0B}'\n    yellow: '${s.base0A}'\n` +
-      `    blue: '${s.base0D}'\n    magenta: '${s.base0E}'\n` +
-      `    cyan: '${s.base0C}'\n    white: '${s.base06}'\n`,
+      `# ${s.name}${s.author ? ` by ${s.author}` : ""} - alacritty color config\n\n[colors]\ndraw_bold_text_with_bright_colors = false\n\n` +
+      `[colors.primary]\nbackground = '0x${s.base00.slice(1)}'\nforeground = '0x${s.base05.slice(1)}'\n\n` +
+      `[colors.cursor]\ntext = '0x${s.base00.slice(1)}'\ncursor = '0x${s.base05.slice(1)}'\n\n` +
+      `[colors.normal]\nblack = '0x${s.base00.slice(1)}'\nred = '0x${s.base08.slice(1)}'\n` +
+      `green = '0x${s.base0B.slice(1)}'\nyellow = '0x${s.base0A.slice(1)}'\n` +
+      `blue = '0x${s.base0D.slice(1)}'\nmagenta = '0x${s.base0E.slice(1)}'\n` +
+      `cyan = '0x${s.base0C.slice(1)}'\nwhite = '0x${s.base05.slice(1)}'\n\n` +
+      `[colors.bright]\nblack = '0x${s.base02.slice(1)}'\nred = '0x${s.base09.slice(1)}'\n` +
+      `green = '0x${s.base01.slice(1)}'\nyellow = '0x${s.base02.slice(1)}'\n` +
+      `blue = '0x${s.base04.slice(1)}'\nmagenta = '0x${s.base06.slice(1)}'\n` +
+      `cyan = '0x${s.base0F.slice(1)}'\nwhite = '0x${s.base07.slice(1)}'\n`,
   },
   {
     id: "base16-json",
@@ -122,28 +122,32 @@ export const exportFormats: ExportFormat[] = [
   },
   {
     id: "kitty",
-    label: "Kitty",
+    label: "Kitty (base16-kitty)",
     extension: ".conf",
     mime: "text/plain",
     generate: (s) =>
-      `# ${s.name}${s.author ? ` by ${s.author}` : ""} — https://sw.kovidgoyal.net/kitty/conf.html\n` +
-      `foreground ${s.base05}\nbackground ${s.base00}\nselection_foreground ${s.base00}\nselection_background ${s.base02}\n` +
-      `cursor ${s.base05}\ncursor_text_color ${s.base00}\nurl_color ${s.base0C}\nactive_border_color ${s.base0D}\n` +
-      `inactive_border_color ${s.base01}\nbell_color ${s.base0A}\nactive_tab_foreground ${s.base00}\nactive_tab_background ${s.base0D}\n` +
-      `inactive_tab_foreground ${s.base04}\ninactive_tab_background ${s.base01}\ntab_bar_background ${s.base01}\n\n` +
-      `color0 ${s.base00}\ncolor1 ${s.base08}\ncolor2 ${s.base0B}\ncolor3 ${s.base0A}\n` +
-      `color4 ${s.base0D}\ncolor5 ${s.base0E}\ncolor6 ${s.base0C}\ncolor7 ${s.base05}\n` +
-      `color8 ${s.base03}\ncolor9 ${s.base08}\ncolor10 ${s.base0B}\ncolor11 ${s.base0A}\n` +
-      `color12 ${s.base0D}\ncolor13 ${s.base0E}\ncolor14 ${s.base0C}\ncolor15 ${s.base06}\n`,
+      `# Base16 ${s.name} - kitty color config\n# Scheme by ${s.author || "unknown"}\n` +
+      `background #${s.base00.slice(1)}\nforeground #${s.base05.slice(1)}\n` +
+      `selection_background #${s.base05.slice(1)}\nselection_foreground #${s.base00.slice(1)}\n` +
+      `url_color #${s.base04.slice(1)}\ncursor #${s.base05.slice(1)}\ncursor_text_color #${s.base00.slice(1)}\n` +
+      `active_border_color #${s.base03.slice(1)}\ninactive_border_color #${s.base01.slice(1)}\n` +
+      `active_tab_background #${s.base00.slice(1)}\nactive_tab_foreground #${s.base05.slice(1)}\n` +
+      `inactive_tab_background #${s.base01.slice(1)}\ninactive_tab_foreground #${s.base04.slice(1)}\n` +
+      `tab_bar_background #${s.base01.slice(1)}\nwayland_titlebar_color #${s.base00.slice(1)}\n` +
+      `macos_titlebar_color #${s.base00.slice(1)}\n\n` +
+      `# normal\ncolor0 #${s.base00.slice(1)}\ncolor1 #${s.base08.slice(1)}\ncolor2 #${s.base0B.slice(1)}\ncolor3 #${s.base0A.slice(1)}\n` +
+      `color4 #${s.base0D.slice(1)}\ncolor5 #${s.base0E.slice(1)}\ncolor6 #${s.base0C.slice(1)}\ncolor7 #${s.base05.slice(1)}\n\n` +
+      `# bright\ncolor8 #${s.base03.slice(1)}\ncolor9 #${s.base09.slice(1)}\ncolor10 #${s.base01.slice(1)}\ncolor11 #${s.base02.slice(1)}\n` +
+      `color12 #${s.base04.slice(1)}\ncolor13 #${s.base06.slice(1)}\ncolor14 #${s.base0F.slice(1)}\ncolor15 #${s.base07.slice(1)}\n`,
   },
   {
     id: "ghostty",
-    label: "Ghostty",
+    label: "Ghostty (Stylix theme)",
     extension: ".conf",
     mime: "text/plain",
     generate: (s) =>
-      `# ${s.name}${s.author ? ` by ${s.author}` : ""} — https://ghostty.org/docs/config\n` +
-      `background = ${s.base00}\nforeground = ${s.base05}\ncursor-color = ${s.base05}\ncursor-text = ${s.base00}\n` +
+      `# ${s.name}${s.author ? ` by ${s.author}` : ""}\n# add to your ghostty config or a themes/<name> file\n` +
+      `background = ${s.base00}\nforeground = ${s.base05}\ncursor-color = ${s.base05}\n` +
       `selection-background = ${s.base02}\nselection-foreground = ${s.base05}\n\n` +
       `palette = 0=${s.base00}\npalette = 1=${s.base08}\npalette = 2=${s.base0B}\npalette = 3=${s.base0A}\n` +
       `palette = 4=${s.base0D}\npalette = 5=${s.base0E}\npalette = 6=${s.base0C}\npalette = 7=${s.base05}\n` +
