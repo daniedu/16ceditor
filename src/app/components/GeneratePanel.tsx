@@ -60,6 +60,7 @@ const ALL_ALGORITHMS: ExtractAlgorithm[] = [
   "high-contrast", "complementary", "quicktheme",
   "pywal", "pywal-colorz", "pywal-colorthief",
   "wallust-kmeans", "wallust-ansi",
+  "recol",
 ];
 
 interface GeneratePanelProps {
@@ -115,6 +116,8 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
       const result = await extractPalette(f, algorithm, light);
       setGenerated(result);
       setName(result.name);
+      // recol detects polarity itself; reflect its choice on the toggle.
+      if (algorithm === "recol") setLight(hexToHsl(result.base00).l > 50);
     } catch {}
     console.timeEnd(`extract: ${label}`);
     setExtracting(false);
@@ -128,6 +131,8 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
       const result = await extractPalette(uploadedFile, algorithm, newLight);
       setGenerated(result);
       setName(result.name);
+      // recol ignores the requested polarity; snap the toggle back to what it chose.
+      if (algorithm === "recol") setLight(hexToHsl(result.base00).l > 50);
     } catch {}
     setExtracting(false);
   }, [uploadedFile, algorithm]);
@@ -163,7 +168,7 @@ export default function GeneratePanel({ onSave, scheme }: GeneratePanelProps) {
     { label: "Themed", algs: ["monochrome", "vibrant", "muted", "dominant"] },
     { label: "Accessibility", algs: ["high-contrast", "complementary"] },
     { label: "Perceptual", algs: ["quicktheme"] },
-    { label: "From other tools", algs: ["pywal", "pywal-colorz", "pywal-colorthief", "wallust-kmeans", "wallust-ansi"] },
+    { label: "From other tools", algs: ["pywal", "pywal-colorz", "pywal-colorthief", "wallust-kmeans", "wallust-ansi", "recol"] },
   ];
 
   return (

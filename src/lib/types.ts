@@ -52,7 +52,7 @@ export interface ExportFormat {
   mime: string;
 }
 
-export type ViewTab = "previews" | "editor" | "analysis" | "generate" | "settings";
+export type ViewTab = "previews" | "editor" | "analysis" | "adjust" | "generate" | "settings";
 
 export type SemanticRole =
   | "bg" | "container" | "scrollbar" | "muted"

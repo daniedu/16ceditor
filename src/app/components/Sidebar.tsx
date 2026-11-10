@@ -1,7 +1,7 @@
 "use client";
 
 import { ColorScheme, ViewTab, BaseKey } from "@/src/lib/types";
-import { Palette, Eye, BarChart3, Sparkles, Settings, Plus, Copy, Download, Trash2, Upload, X, LayoutGrid } from "lucide-react";
+import { Palette, Eye, BarChart3, Sparkles, Settings, Plus, Copy, Download, Trash2, Upload, X, LayoutGrid, SlidersHorizontal } from "lucide-react";
 import { useMediaQuery } from "@/src/lib/useMediaQuery";
 import Link from "next/link";
 
@@ -29,6 +29,7 @@ const tabs: { id: ViewTab; label: string; icon: React.ComponentType<{ className?
   { id: "previews", label: "Previews", icon: Eye },
   { id: "analysis", label: "Analysis", icon: BarChart3 },
   { id: "generate", label: "Generate", icon: Sparkles },
+  { id: "adjust", label: "Adjust", icon: SlidersHorizontal },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 

@@ -10,7 +10,7 @@ Built for people who want full control over their terminal and desktop theme col
 - **16 Base16 colour swatches** — edit with hex input or a colour picker popover
 - **Undo/redo** per colour — history is per-swatch, survives scheme switches
 - **Hyprland-style fake desktop preview** — wallpaper, Waybar-style top bar, active/inactive window borders, launcher, all driven by the scheme (terminal.sexy-style screenshot simulation)
-- **Image palette extraction** — upload an image and pick from 16 algorithms (each ported from / inspired by its namesake tool):
+- **Image palette extraction** — upload an image and pick from 17 algorithms (each ported from / inspired by its namesake tool):
   - *K-Means* — balanced clustering
   - *Median Cut* — fast, good for dominant colours
   - *Histogram Peak* — preserves actual image tones
@@ -23,13 +23,15 @@ Built for people who want full control over their terminal and desktop theme col
   - *pywal (colorthief)* — 8-colour palette sorted by YIQ luminance
   - *wallust kmeans* — Lab-space 16-colour clustering with ΔE-2000 dedup
   - *wallust ansi* — HSV hue-range TTY palette (matches wallust's `ansi` scheme)
-- **Dark / Light polarity** — pywal & wallust backends adapt their contrast rules to the chosen style
+  - *recol* — FFmpeg `palettegen` median cut in integer OkLab plus recol's full theme derivation (polarity auto-detected, WCAG contrast loops); byte-identical to real ffmpeg in tests
+- **Dark / Light polarity** — pywal & wallust backends adapt their contrast rules to the chosen style; recol detects polarity from the image itself
 - **Hover inspection** — hover a colour row to highlight every element it paints across all previews (Stylix role check)
 - **Large image picker** — pan, zoom, pick any pixel colour straight from the image
 - **Saturation badges** — hover any swatch to see saturation % (green/yellow/red)
 - **Previews** — fake Hyprland desktop, terminal ANSI, GTK, Qt, multi-language code editor
 - **Syntax preview in 4 languages** — Rust, TypeScript, Python, Bash; paste your own code to preview it with the scheme
 - **WCAG contrast analysis** — checks 5 key background/foreground pairs
+- **Adjust tab (recol adjustments)** — stack recol's twelve adjustments (exposure, fade, brightness, gamma, contrast, saturation, vibrance, hue, temperature, tint, normalize, invert) across All / Neutrals / Accents / bg / fg / red…pink groups, with live before→after swatches and a recol `--adjust` spec editor (`red.sat=20,all.b=10,nt.nb=50`)
 - **Export** — 11 formats, all with colour-highlighted hex values
 - **Import** — paste Base16 JSON or YAML
 - **Persistent** — schemes saved to `localStorage` (debounced writes; images stored separately so editing colours never re-serialises the wallpaper)
@@ -44,6 +46,7 @@ These tools were used as references for the algorithms above — the site now po
 | [pywal `colorz`](https://github.com/dylanaraps/pywal/blob/master/pywal/backends/colorz.py) | k-means in hue-ordered 6-colour palette | `pywal-colorz` |
 | [pywal `colorthief`](https://github.com/dylanaraps/pywal/blob/master/pywal/backends/colorthief.py) | colour thief 8-palette sorted by YIQ | `pywal-colorthief` |
 | [wallust](https://codeberg.org/explosion-mental/wallust) | `salience` (top contrast cluster), `kmeans` (Lab 16-colour), `ansi` (HSV TTY slot matching) | `wallust-kmeans`, `wallust-ansi` |
+| [recol](https://github.com/nlkli/recol) | FFmpeg `palettegen` (median cut in integer OkLab) at max_colors 5 and 10, then its own theme derivation: polarity detection from the darkest/brightest palette slots, selection/cursor colors, Lab lightness anchoring, WCAG ≥3 contrast loop for accents (fg needs ≥6), final lightness Normalize over all text colours | `recol` |
 | [wpgtk](https://github.com/deviantfero/wpgtk) | GUI wrapper around pywal; uses pywal's backends | — (use the pywal algorithms) |
 | [Chameleon](https://github.com/GideonWolfe/Chameleon) | shell wrapper around pywal's wal binary | — (use the pywal algorithms) |
 | [Stylix](https://github.com/danth/stylix) | consumes a Base16 scheme — see the site's role mappings which match Stylix defaults exactly | site previews apply colours the same way |
@@ -51,6 +54,8 @@ These tools were used as references for the algorithms above — the site now po
 | [Paletty](https://paletty.dev/) | extract palettes from images, preview on terminal mockups, community gallery | extraction + terminal mockup previews |
 
 Verified-unavailable: some guide references (ricetheme, miozu-theme, a specific "Hyprland simulator in the Stylix community") could not be confirmed to exist as described; techniques from them are implemented directly instead of citing them.
+
+Port credits for the `recol` generator and Adjust tab: the `palettegen` filter is a TypeScript port of FFmpeg `libavfilter/vf_palettegen.c` and `palette.c` (FFmpeg, LGPL-2.1+), which in turn uses the integer Oklab approximation of [Oklab](https://bottosson.github.io/posts/Oklab/) by Björn Ottosson; the theme-derivation and adjustment logic is ported from [`recol-lib`](https://github.com/nlkli/recol) (MIT). The `recol` palette output has been verified byte-for-byte against real ffmpeg (`palettegen=max_colors=5/10`) across flat, gradient, noisy, and 1MP test images.
 
 ## Adding default schemes
 

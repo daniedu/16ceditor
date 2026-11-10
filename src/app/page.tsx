@@ -16,11 +16,12 @@ import QtPreview from "./components/QtPreview";
 import CodePreview from "./components/CodePreview";
 import DesktopPreview from "./components/DesktopPreview";
 import GeneratePanel from "./components/GeneratePanel";
+import AdjustPanel from "./components/AdjustPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import ImportExport from "./components/ImportExport";
 import ImagePicker from "./components/ImagePicker";
 import RoleMappingEditor from "./components/RoleMappingEditor";
-import { Pipette, Menu, Palette, Eye, BarChart3, Sparkles, Settings, ChevronLeft, MousePointer2 } from "lucide-react";
+import { Pipette, Menu, Palette, Eye, BarChart3, Sparkles, Settings, ChevronLeft, MousePointer2, SlidersHorizontal } from "lucide-react";
 
 function nextSlug(schemes: ColorScheme[]): string {
   return `custom-${schemes.length + 1}`;
@@ -343,6 +344,7 @@ export default function Home() {
             {!isPhone && activeTab === "editor" && "Palette Editor"}
             {!isPhone && activeTab === "analysis" && "Contrast Analysis"}
             {!isPhone && activeTab === "generate" && "Generate Theme"}
+            {!isPhone && activeTab === "adjust" && "Adjust Colours (recol)"}
             {!isPhone && activeTab === "settings" && "Colour Settings"}
           </span>
           <span
@@ -438,6 +440,12 @@ export default function Home() {
               </div>
             )}
 
+            {activeTab === "adjust" && (
+              <div className="max-w-3xl">
+                <AdjustPanel scheme={activeScheme} onSave={handleSave} />
+              </div>
+            )}
+
             {activeTab === "settings" && (
               <div className="max-w-3xl">
                 <SettingsPanel scheme={activeScheme} settings={colorSettings} onChange={handleColorSettingsChange} />
@@ -526,6 +534,7 @@ export default function Home() {
               { id: "previews" as ViewTab, icon: Eye, label: "Previews", mobileId: "previews" as const },
               { id: "analysis" as ViewTab, icon: BarChart3, label: "Analysis", mobileId: "tools" as const },
               { id: "generate" as ViewTab, icon: Sparkles, label: "Generate", mobileId: "tools" as const },
+              { id: "adjust" as ViewTab, icon: SlidersHorizontal, label: "Adjust", mobileId: "tools" as const },
               { id: "settings" as ViewTab, icon: Settings, label: "Settings", mobileId: "tools" as const },
             ].map((t) => {
               const isActive = activeTab === t.id;

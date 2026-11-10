@@ -3,6 +3,7 @@ import {
   rgbToHex, hexToRgb, rgbToHsl, hslToRgb, contrastRatio,
   rgbToLab, labToRgb, deltaE2000,
 } from "./color";
+import { extractRecolScheme, preparePalettegen } from "./recol";
 
 export type ExtractAlgorithm =
   | "kmeans"
@@ -20,7 +21,8 @@ export type ExtractAlgorithm =
   | "pywal-colorz"
   | "pywal-colorthief"
   | "wallust-kmeans"
-  | "wallust-ansi";
+  | "wallust-ansi"
+  | "recol";
 
 export const ALGORITHM_LABELS: Record<ExtractAlgorithm, string> = {
   kmeans: "K-Means Clustering",
@@ -39,6 +41,7 @@ export const ALGORITHM_LABELS: Record<ExtractAlgorithm, string> = {
   "pywal-colorthief": "Pywal · ColorThief (YIQ)",
   "wallust-kmeans": "wallust K-Means (Lab/ΔE)",
   "wallust-ansi": "wallust ANSI (HSV TTY)",
+  recol: "recol · FFmpeg palettegen",
 };
 
 /** Extractors whose output is an ANSI0-15 slot palette (mapped straight into Base16). */
@@ -1119,7 +1122,9 @@ function extractWallustAnsi(pixels: number[][], _k: number, light: boolean): num
 
 // -- Main entry point --
 
-const extractors: Record<ExtractAlgorithm, (pixels: number[][], k: number, light: boolean) => number[][]> = {
+type PaletteAlgorithm = Exclude<ExtractAlgorithm, "recol">;
+
+const extractors: Record<PaletteAlgorithm, (pixels: number[][], k: number, light: boolean) => number[][]> = {
   kmeans: (p, k) => extractKMeans(p, k),
   "median-cut": (p, k) => medianCutExtract(p, k),
   histogram: (p, k) => histogramExtract(p, k),
@@ -1138,7 +1143,25 @@ const extractors: Record<ExtractAlgorithm, (pixels: number[][], k: number, light
   "wallust-ansi": extractWallustAnsi,
 };
 
-const pixelCache = new WeakMap<File, Promise<{ dataUrl: string; pixels: number[][] }>>();
+const pixelCache = new WeakMap<File, Promise<{ dataUrl: string; pixels: number[][]; fullRgba?: Uint8ClampedArray }>>();
+
+/** Full-image RGBA bytes for palettegen (recol parity: ffmpeg quantises the
+ *  whole frame, not a sample). Images beyond ~4MP get drawn once to a
+ *  budgeted canvas to protect memory/time on huge photos. */
+function fullImageRgba(img: HTMLImageElement): { data: Uint8ClampedArray } {
+  const w0 = img.naturalWidth || img.width;
+  const h0 = img.naturalHeight || img.height;
+  const budget = 4_000_000;
+  const scale = (w0 * h0 > budget) ? Math.sqrt(budget / (w0 * h0)) : 1;
+  const w = Math.max(1, Math.round(w0 * scale));
+  const h = Math.max(1, Math.round(h0 * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(img, 0, 0, w, h);
+  return { data: ctx.getImageData(0, 0, w, h).data };
+}
 
 export async function extractPalette(
   file: File,
@@ -1151,15 +1174,23 @@ export async function extractPalette(
       const dataUrl = await fileToDataUrl(file);
       const img = await loadImage(dataUrl);
       const pixels = samplePixels(img, 2000);
-      return { dataUrl, pixels };
+      return { dataUrl, pixels, fullRgba: fullImageRgba(img).data };
     })();
     pixelCache.set(file, promise);
   }
-  const { dataUrl, pixels } = await promise;
+  const { dataUrl, pixels, fullRgba } = await promise;
+  const name = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+
+  if (algorithm === "recol") {
+    return extractRecolScheme(
+      preparePalettegen(fullRgba ?? new Uint8ClampedArray(0)),
+      name || "recol",
+      dataUrl,
+    );
+  }
+
   const extractor = extractors[algorithm];
   const colors = extractor(pixels, 16, light);
-
-  const name = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
 
   if (colors.length < 16) {
     const padding = 16 - colors.length;
